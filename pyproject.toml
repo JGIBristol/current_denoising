@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.2.6",
     "scikit-image>=0.25.2",
     "scikit-learn>=1.7.0",
+    "torch>=2.7.1",
     "yamlmagic>=0.2.0",
 ]
 
