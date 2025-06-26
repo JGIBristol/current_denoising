@@ -2,7 +2,10 @@
 Deep convolutional GAN (DCGAN) implementation
 """
 
+import torch
 import torch.nn as nn
+from tqdm import tqdm
+from torch.autograd import Variable
 
 
 class Generator(nn.Module):
@@ -66,3 +69,56 @@ class Discriminator(nn.Module):
         validity = self.adv_layer(out)
 
         return validity
+
+
+def train(
+    generator: Generator, discriminator: Discriminator, config: dict
+) -> tuple[Generator, Discriminator]:
+    """
+    Train
+    """
+    generator.cuda()
+    discriminator.cuda()
+    config["loss"].cuda()
+
+    for epoch in tqdm(range(config["n_epochs"])):
+        for imgs in config["dataloader"]:
+
+            # Adversarial ground truths
+            valid = Variable(
+                torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
+            )
+            fake = Variable(
+                torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False
+            )
+
+            # Configure input
+            real_imgs = Variable(imgs.type(Tensor))
+
+            #  Train Generator
+            optimizer_G.zero_grad()
+
+            # Sample noise as generator input
+            z = Variable(
+                Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim)))
+            )
+
+            # Generate a batch of images
+            gen_imgs = generator(z)
+
+            # Loss measures generator's ability to fool the discriminator
+            g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+
+            g_loss.backward()
+            optimizer_G.step()
+
+            #  Train Discriminator
+            optimizer_D.zero_grad()
+
+            # Measure discriminator's ability to classify real from generated samples
+            real_loss = adversarial_loss(discriminator(real_imgs), valid)
+            fake_loss = adversarial_loss(discriminator(gen_imgs.detach()), fake)
+            d_loss = (real_loss + fake_loss) / 2
+
+            d_loss.backward()
+            optimizer_D.step()
