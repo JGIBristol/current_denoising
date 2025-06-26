@@ -96,10 +96,10 @@ def train(
     config["loss"].cuda()
 
     optimizer_g = torch.optim.Adam(
-        generator.parameters(), lr=config["lr"], betas=(0.5, 0.999)
+        generator.parameters(), lr=config["learning_rate"], betas=(0.5, 0.999)
     )
     optimizer_d = torch.optim.Adam(
-        discriminator.parameters(), lr=config["lr"], betas=(0.5, 0.999)
+        discriminator.parameters(), lr=config["learning_rate"], betas=(0.5, 0.999)
     )
 
     for _ in tqdm(range(config["n_epochs"])):
