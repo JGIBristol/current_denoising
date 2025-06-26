@@ -87,7 +87,7 @@ class Discriminator(torch.nn.Module):
 
 def train(
     generator: Generator, discriminator: Discriminator, config: dict
-) -> tuple[Generator, Discriminator]:
+) -> tuple[Generator, Discriminator, list[list[float]], list[list[float]]]:
     """
     Train
     """
@@ -102,9 +102,12 @@ def train(
         discriminator.parameters(), lr=config["learning_rate"], betas=(0.5, 0.999)
     )
 
+    gen_losses = []
+    disc_losses = []
     for _ in tqdm(range(config["n_epochs"])):
+        gen_losses.append([])
+        disc_losses.append([])
         for imgs in config["dataloader"]:
-
             # Adversarial ground truths
             valid = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
@@ -145,3 +148,8 @@ def train(
 
             d_loss.backward()
             optimizer_d.step()
+
+            gen_losses[-1].append(g_loss.item())
+            disc_losses[-1].append(d_loss.item())
+
+    return generator, discriminator, gen_losses, disc_losses
