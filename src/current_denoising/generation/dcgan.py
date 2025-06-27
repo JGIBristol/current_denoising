@@ -146,37 +146,41 @@ def train(
     for _ in tqdm(range(config["n_epochs"])):
         gen_losses.append([])
         disc_losses.append([])
-        for imgs in config["dataloader"]:
+
+        for i, imgs in enumerate(config["dataloader"]):
             batch_size = imgs.shape[0]
 
             # Ground truth labels
-            real = Variable(
+            real_labels = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
             )
-            fake = Variable(
+            fake_labels = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False
             )
             real_imgs = Variable(imgs.type(torch.cuda.FloatTensor))
 
             # Train Discriminator first
-            optimizer_d.zero_grad()
+            for _ in range(config["n_critic"]):
+                optimizer_d.zero_grad()
 
-            # Generate some fake images for discriminator training
-            z_d = Variable(
-                torch.cuda.FloatTensor(
-                    np.random.normal(0, 1, (batch_size, config["latent_dim"]))
+                # Generate some fake images for discriminator training
+                z_d = Variable(
+                    torch.cuda.FloatTensor(
+                        np.random.normal(0, 1, (batch_size, config["latent_dim"]))
+                    )
                 )
-            )
-            gen_imgs_d = generator(z_d)
+                gen_imgs_d = generator(z_d)
 
-            # detatch the generator output to avoid backpropagating through it
-            # we don't want to update the generator during discriminator training
-            real_loss = config["loss"](discriminator(real_imgs), real)
-            fake_loss = config["loss"](discriminator(gen_imgs_d.detach()), fake)
-            d_loss = (real_loss + fake_loss) / 2
+                # detatch the generator output to avoid backpropagating through it
+                # we don't want to update the generator during discriminator training
+                real_loss = config["loss"](discriminator(real_imgs), real_labels)
+                fake_loss = config["loss"](
+                    discriminator(gen_imgs_d.detach()), fake_labels
+                )
+                d_loss = (real_loss + fake_loss) / 2
 
-            d_loss.backward()
-            optimizer_d.step()
+                d_loss.backward()
+                optimizer_d.step()
 
             #  Train Generator
             optimizer_g.zero_grad()
@@ -190,7 +194,7 @@ def train(
             gen_imgs_g = generator(z_g)
 
             # Now we do want to update the generator, so don't detatch
-            g_loss = config["loss"](discriminator(gen_imgs_g), real)
+            g_loss = config["loss"](discriminator(gen_imgs_g), real_labels)
 
             g_loss.backward()
             optimizer_g.step()
