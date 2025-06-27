@@ -173,11 +173,14 @@ def train(
 
                 # detatch the generator output to avoid backpropagating through it
                 # we don't want to update the generator during discriminator training
-                real_loss = config["loss"](discriminator(real_imgs), real_labels)
-                fake_loss = config["loss"](
-                    discriminator(gen_imgs_d.detach()), fake_labels
+                real_loss = discriminator(real_imgs)
+                fake_loss = discriminator(gen_imgs_d.detach())
+                d_loss = (
+                    fake_loss.mean()
+                    - real_loss.mean()
+                    + config["lambda_gp"]
+                    * _gradient_penalty(discriminator, real_imgs.data, gen_imgs_d.data)
                 )
-                d_loss = (real_loss + fake_loss) / 2
 
                 d_loss.backward()
                 optimizer_d.step()
