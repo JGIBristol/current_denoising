@@ -3,9 +3,10 @@ Deep convolutional GAN (DCGAN) implementation
 """
 
 import torch
+from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm
-from torch.autograd import Variable
+import torchvision.utils as vutils
 
 
 class Generator(torch.nn.Module):
@@ -139,11 +140,11 @@ def train(
 
     gen_losses = []
     disc_losses = []
-    for _ in tqdm(range(config["n_epochs"])):
+    for i in tqdm(range(config["n_epochs"])):
         gen_losses.append([])
         disc_losses.append([])
 
-        for i, imgs in enumerate(config["dataloader"]):
+        for imgs in config["dataloader"]:
             batch_size = imgs.shape[0]
 
             # Ground truth labels
@@ -200,5 +201,19 @@ def train(
 
             gen_losses[-1].append(g_loss.item())
             disc_losses[-1].append(d_loss.item())
+
+        if not i % 20:
+            # Save the most recent batch of fake images
+            out_dir = config["output_dir"] / f"epoch_{i}"
+
+            # Rescale from [-1, 1] to [0, 1]
+            gen_imgs_g = (gen_imgs_g + 1) / 2
+
+            vutils.save_image(
+                gen_imgs_g.data,
+                out_dir / "fake_images.png",
+                normalize=False,
+                nrow=int(np.sqrt(config["batch_size"])),
+            )
 
     return generator, discriminator, gen_losses, disc_losses
