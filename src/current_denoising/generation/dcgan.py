@@ -108,46 +108,53 @@ def train(
         gen_losses.append([])
         disc_losses.append([])
         for imgs in config["dataloader"]:
-            # Adversarial ground truths
-            valid = Variable(
+            batch_size = imgs.shape[0]
+
+            # Ground truth labels
+            real = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
             )
             fake = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False
             )
-
-            # Configure input
             real_imgs = Variable(imgs.type(torch.cuda.FloatTensor))
 
-            #  Train Generator
-            optimizer_g.zero_grad()
-
-            # Sample noise as generator input
-            z = Variable(
-                torch.cuda.FloatTensor(
-                    np.random.normal(0, 1, (imgs.shape[0], config["latent_dim"]))
-                )
-            )
-
-            # Generate a batch of images
-            gen_imgs = generator(z)
-
-            # Loss measures generator's ability to fool the discriminator
-            g_loss = config["loss"](discriminator(gen_imgs), valid)
-
-            g_loss.backward()
-            optimizer_g.step()
-
-            #  Train Discriminator
+            # Train Discriminator first
             optimizer_d.zero_grad()
 
-            # Measure discriminator's ability to classify real from generated samples
-            real_loss = config["loss"](discriminator(real_imgs), valid)
-            fake_loss = config["loss"](discriminator(gen_imgs.detach()), fake)
+            # Generate some fake images for discriminator training
+            z_d = Variable(
+                torch.cuda.FloatTensor(
+                    np.random.normal(0, 1, (batch_size, config["latent_dim"]))
+                )
+            )
+            gen_imgs_d = generator(z_d)
+
+            # detatch the generator output to avoid backpropagating through it
+            # we don't want to update the generator during discriminator training
+            real_loss = config["loss"](discriminator(real_imgs), real)
+            fake_loss = config["loss"](discriminator(gen_imgs_d.detach()), fake)
             d_loss = (real_loss + fake_loss) / 2
 
             d_loss.backward()
             optimizer_d.step()
+
+            #  Train Generator
+            optimizer_g.zero_grad()
+
+            # Generate a batch of images
+            z_g = Variable(
+                torch.cuda.FloatTensor(
+                    np.random.normal(0, 1, (batch_size, config["latent_dim"]))
+                )
+            )
+            gen_imgs_g = generator(z_g)
+
+            # Now we do want to update the generator, so don't detatch
+            g_loss = config["loss"](discriminator(gen_imgs_g), real)
+
+            g_loss.backward()
+            optimizer_g.step()
 
             gen_losses[-1].append(g_loss.item())
             disc_losses[-1].append(d_loss.item())
