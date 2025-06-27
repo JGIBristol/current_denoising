@@ -197,7 +197,7 @@ def train(
             gen_imgs_g = generator(z_g)
 
             # Now we do want to update the generator, so don't detatch
-            g_loss = config["loss"](discriminator(gen_imgs_g), real_labels)
+            g_loss = -discriminator(gen_imgs_g).mean()
 
             g_loss.backward()
             optimizer_g.step()
