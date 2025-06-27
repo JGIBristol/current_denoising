@@ -85,6 +85,45 @@ class Discriminator(torch.nn.Module):
         return validity
 
 
+def _gradient_penalty(D, real_samples, fake_samples) -> torch.Tensor:
+    """
+    WGAN gradient penalty
+
+    Instead of clipping weights, we penalize the model if |gradient| is not 1.
+    We do this by interpolating between real and fake samples,
+    and computing the gradient of the discriminator's output with respect
+    to these interpolated samples.
+
+    We then penalize the model if the norm of this gradient is not 1.
+
+    :
+
+    """
+    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=real_samples.device)
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(
+        True
+    )
+
+    d_interpolates = D(interpolates)
+    fake = torch.ones(d_interpolates.size(), device=real_samples.device)
+
+    gradients = torch.autograd.grad(
+        outputs=d_interpolates,
+        inputs=interpolates,
+        grad_outputs=fake,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
+
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+
+    print(type(gradient_penalty))
+    assert False
+    return gradient_penalty
+
+
 def train(
     generator: Generator, discriminator: Discriminator, config: dict
 ) -> tuple[Generator, Discriminator, list[list[float]], list[list[float]]]:
