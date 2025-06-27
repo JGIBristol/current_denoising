@@ -53,18 +53,16 @@ class Discriminator(torch.nn.Module):
         """define the arch"""
         super().__init__()
 
-        def discriminator_block(in_filters, out_filters, bn=True):
+        def discriminator_block(in_filters, out_filters):
             block = [
                 torch.nn.Conv2d(in_filters, out_filters, 3, 2, 1),
                 torch.nn.LeakyReLU(0.2, inplace=True),
                 torch.nn.Dropout2d(0.25),
             ]
-            if bn:
-                block.append(torch.nn.BatchNorm2d(out_filters, 0.8))
             return block
 
         self.model = torch.nn.Sequential(
-            *discriminator_block(config["channels"], 16, bn=False),
+            *discriminator_block(config["channels"], 16),
             *discriminator_block(16, 32),
             *discriminator_block(32, 64),
             *discriminator_block(64, 128),
@@ -72,9 +70,7 @@ class Discriminator(torch.nn.Module):
 
         # The height and width of downsampled image
         ds_size = config["img_size"] // 2**4
-        self.adv_layer = torch.nn.Sequential(
-            torch.nn.Linear(128 * ds_size**2, 1), torch.nn.Sigmoid()
-        )
+        self.adv_layer = torch.nn.Linear(128 * ds_size**2, 1)
 
     def forward(self, img):
         """Classify an image as real or fake"""
