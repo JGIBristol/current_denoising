@@ -95,11 +95,11 @@ def train(
     discriminator.cuda()
     config["loss"].cuda()
 
-    optimizer_g = torch.optim.Adam(
-        generator.parameters(), lr=config["learning_rate"], betas=(0.5, 0.999)
+    optimizer_g = torch.optim.RMSprop(
+        generator.parameters(), lr=config["learning_rate"]
     )
-    optimizer_d = torch.optim.Adam(
-        discriminator.parameters(), lr=config["learning_rate"], betas=(0.5, 0.999)
+    optimizer_d = torch.optim.RMSprop(
+        discriminator.parameters(), lr=config["learning_rate"]
     )
 
     gen_losses = []
