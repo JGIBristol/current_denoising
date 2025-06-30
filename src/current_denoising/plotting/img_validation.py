@@ -33,10 +33,14 @@ def show(batch: torch.Tensor, **kwargs) -> plt.Figure:
     return fig
 
 
-def hist(batch: torch.Tensor, **hist_kw):
+def hist(batch: torch.Tensor, **hist_kw) -> plt.Figure:
     """
     Plot a histogram of the pixel values in the batch of images
 
     This might correspond to velocities - we might be interested in this to see if
     our GAN is correctly generating the noise distribution.
     """
+    fig, axis = plt.subplots()
+    axis.hist(batch.cpu().detach().numpy().flatten(), **hist_kw)
+
+    return fig
