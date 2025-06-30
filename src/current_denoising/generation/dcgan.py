@@ -116,8 +116,6 @@ def _gradient_penalty(D, real_samples, fake_samples) -> torch.Tensor:
     gradients = gradients.view(gradients.size(0), -1)
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
 
-    print(type(gradient_penalty))
-    assert False
     return gradient_penalty
 
 
@@ -205,6 +203,7 @@ def train(
         if not i % 20:
             # Save the most recent batch of fake images
             out_dir = config["output_dir"] / f"epoch_{i}"
+            out_dir.mkdir(parents=True, exist_ok=True)
 
             # Rescale from [-1, 1] to [0, 1]
             gen_imgs_g = (gen_imgs_g + 1) / 2
