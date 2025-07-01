@@ -30,9 +30,9 @@ def show(batch: torch.Tensor, **kwargs) -> plt.Figure:
 
     Kwargs are passed to imshow
     """
-    n_rows, ncols = _n_axes(batch)
+    n_rows, n_cols = _n_axes(batch)
 
-    fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(ncol * 3, nrow * 3))
+    fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(n_cols * 3, n_rows * 3))
     for i, axis in enumerate(axes.flat):
         axis.imshow(batch[i].cpu().detach().numpy().transpose(1, 2, 0), **kwargs)
         axis.axis("off")
@@ -61,7 +61,7 @@ def fft(batch) -> plt.Figure:
     """
     fft_sum = None
     for img in batch.cpu().detach().numpy():
-        fft_img = np.abs(np.fft.fft2(img))
+        fft_img = np.abs(np.fft.fft2(img.squeeze()))
 
         if fft_sum is None:
             fft_sum = fft_img
