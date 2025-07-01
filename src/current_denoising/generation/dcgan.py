@@ -127,7 +127,6 @@ def train(
     """
     generator.cuda()
     discriminator.cuda()
-    config["loss"].cuda()
 
     optimizer_g = torch.optim.RMSprop(
         generator.parameters(), lr=config["learning_rate"]

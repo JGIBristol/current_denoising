@@ -32,7 +32,9 @@ def show(batch: torch.Tensor, **kwargs) -> plt.Figure:
     """
     n_rows, n_cols = _n_axes(batch)
 
-    fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(n_cols * 3, n_rows * 3))
+    fig, axes = plt.subplots(
+        nrows=n_rows, ncols=n_cols, figsize=(n_cols * 3, n_rows * 3)
+    )
     for i, axis in enumerate(axes.flat):
         axis.imshow(batch[i].cpu().detach().numpy().transpose(1, 2, 0), **kwargs)
         axis.axis("off")
@@ -68,13 +70,23 @@ def fft(batch) -> plt.Figure:
         else:
             fft_sum += fft_img
 
+    # Average and shift zero frequency to center
     fft_avg = fft_sum / batch.shape[0]
-
-    # Shift zero frequency to center
     fft_avg = np.fft.fftshift(fft_avg)
 
+    # create axis labels
+    h, w = fft_avg.shape
+    freq_x = np.fft.fftshift(np.fft.fftfreq(w))
+    freq_y = np.fft.fftshift(np.fft.fftfreq(h))
+
     fig, axis = plt.subplots()
-    axis.imshow(fft_avg, norm=LogNorm(), cmap="seismic")
+    axis.imshow(
+        fft_avg,
+        norm=LogNorm(),
+        cmap="plasma",
+        extent=[freq_x.min(), freq_x.max(), freq_y.min(), freq_y.max()],
+        origin="lower",
+    )
 
     fig.colorbar(axis.images[0], ax=axis, orientation="vertical")
 
