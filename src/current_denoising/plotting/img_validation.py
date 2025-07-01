@@ -55,18 +55,27 @@ def hist(batch: torch.Tensor, **hist_kw) -> plt.Figure:
 
 def fft(batch) -> plt.Figure:
     """
-    Plot the FFT of the batch of images
+    Plot the average FFT magnitude of the batch of images
 
     This is useful for visualising the frequency content of the images.
     """
-    n_rows, n_cols = _n_axes(batch)
+    fft_sum = None
+    for img in batch.cpu().detach().numpy():
+        fft_img = np.abs(np.fft.fft2(img))
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_rows * 3, n_cols * 3))
-    for i, axis in enumerate(axes.flat):
-        fft_img = np.abs(
-            np.fft.fft2(batch[i].cpu().detach().numpy().transpose(1, 2, 0).squeeze())
-        )
-        axis.imshow(fft_img, cmap="gray", norm=LogNorm())
-        axis.axis("off")
+        if fft_sum is None:
+            fft_sum = fft_img
+        else:
+            fft_sum += fft_img
+
+    fft_avg = fft_sum / batch.shape[0]
+
+    # Shift zero frequency to center
+    fft_avg = np.fft.fftshift(fft_avg)
+
+    fig, axis = plt.subplots()
+    axis.imshow(fft_avg, norm=LogNorm(), cmap="seismic")
+
+    fig.colorbar(axis.images[0], ax=axis, orientation="vertical")
 
     return fig
