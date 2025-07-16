@@ -127,6 +127,7 @@ def _get_best_patch(
     comparison_patch: np.ndarray,
     patch_slice: tuple[slice, slice],
     n_uses: list[int],
+    repeat_penalty: float,
 ) -> np.ndarray:
     """
     Iterate over patches, and find the one that best matches the comparison patch
@@ -139,7 +140,9 @@ def _get_best_patch(
     best_idx = None
     for i, patch in enumerate(patches):
         overlap_region = patch[patch_slice]
-        mse = np.sum((overlap_region - comparison_patch) ** 2)
+        mse = np.sum((overlap_region - comparison_patch) ** 2) * (
+            1.0 + repeat_penalty * n_uses[i]
+        )
         if mse < score:
             score = mse
             best_patch = patch
@@ -155,6 +158,7 @@ def _best_patch_compare_left(
     comparison_patch: np.ndarray,
     patch_overlap: int,
     n_uses: list,
+    repeat_penalty: float,
 ) -> np.ndarray:
     """
     Iterate over patches, and find the one that best matches the comparison patch
@@ -164,7 +168,11 @@ def _best_patch_compare_left(
     comparison_patch = comparison_patch[:, -patch_overlap:]
 
     return _get_best_patch(
-        patches, comparison_patch, (slice(None), slice(None, patch_overlap)), n_uses
+        patches,
+        comparison_patch,
+        (slice(None), slice(None, patch_overlap)),
+        n_uses,
+        repeat_penalty,
     )
 
 
@@ -173,13 +181,18 @@ def _best_patch_compare_top(
     comparison_patch: np.ndarray,
     patch_overlap: int,
     n_uses: list[int],
+    repeat_penalty: float,
 ) -> np.ndarray:
     """ """
     # We just want to take the bottom bit of the comparison patch
     comparison_patch = comparison_patch[-patch_overlap:, :]
 
     return _get_best_patch(
-        patches, comparison_patch, (slice(None, patch_overlap), slice(None)), n_uses
+        patches,
+        comparison_patch,
+        (slice(None, patch_overlap), slice(None)),
+        n_uses,
+        repeat_penalty,
     )
 
 
@@ -189,6 +202,7 @@ def _best_patch_compare_top_left(
     top_comparison_patch: np.ndarray,
     patch_overlap: int,
     n_uses: list[int],
+    repeat_penalty: float,
 ) -> np.ndarray:
     """
     Find the best patch that matches both the left and top edges of the comparison patches.
@@ -209,6 +223,7 @@ def _best_patch_compare_top_left(
         mse = np.sum((left_overlap_region - left_comparison_patch) ** 2) + np.sum(
             (top_overlap_region - top_comparison_patch) ** 2
         )
+        mse *= 1.0 + repeat_penalty * n_uses[i]
         if mse < score:
             score = mse
             best_patch = patch
@@ -261,9 +276,18 @@ def optimally_choose_patches(
             "Patch overlap must be non-zero; if you want no overlap, use `randomly_choose_patches`"
         )
 
-    if repeat_penalty < 0:
+    if repeat_penalty < -1:
         warnings.warn(
-            f"Repeat penalty {repeat_penalty} is negative; this will not penalise repeated patches",
+            f"Repeat penalty {repeat_penalty} <-1 will force patch reuse",
+            RuntimeWarning,
+        )
+    elif repeat_penalty == -1:
+        raise ValueError(
+            "Repeat penalty should be positive; if you want no penalty, use 0"
+        )
+    elif repeat_penalty < 0:
+        warnings.warn(
+            f"Repeat penalty {repeat_penalty} <0; this will encourage patch reuse",
             RuntimeWarning,
         )
 
@@ -288,20 +312,25 @@ def optimally_choose_patches(
 
         # Iterate over all the patches and find the best one
         out_list[0][i] = _best_patch_compare_left(
-            patches, comparison_patch, patch_overlap, n_uses
+            patches, comparison_patch, patch_overlap, n_uses, repeat_penalty
         )
 
     # For the next rows, choose the first patch according to its match with the bottom edge of the first patch
     for i in range(1, n_row):
         # Compare the first one to the bottom edge of the first patch
         out_list[i][0] = _best_patch_compare_top(
-            patches, out_list[i - 1][0], patch_overlap, n_uses
+            patches, out_list[i - 1][0], patch_overlap, n_uses, repeat_penalty
         )
 
         # Compare the rest of them to the top and left edges of the previous patches
         for j in range(1, n_col):
             out_list[i][j] = _best_patch_compare_top_left(
-                patches, out_list[i][j - 1], out_list[i - 1][j], patch_overlap, n_uses
+                patches,
+                out_list[i][j - 1],
+                out_list[i - 1][j],
+                patch_overlap,
+                n_uses,
+                repeat_penalty,
             )
 
     return out_list
