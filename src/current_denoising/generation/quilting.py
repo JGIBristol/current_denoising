@@ -5,9 +5,10 @@ Based on "Image Quilting for Texture Synthesis and Transfer" (Efros and Freeman 
 
 """
 
-import numpy as np
-
+import warnings
 from typing import Iterable
+
+import numpy as np
 
 
 class PatchError(Exception):
@@ -59,6 +60,74 @@ def _patch_layout(
         _ceildiv(t - patch_overlap, p - patch_overlap)
         for t, p in zip(target_size, patch_size)
     )
+
+
+def randomly_choose_patches(
+    patches: Iterable[np.ndarray],
+    target_size: tuple[int, int],
+    patch_overlap: int,
+    allow_rotation: bool = False,
+) -> list[list[np.ndarray]]:
+    """
+    Randomly choose patches that will at least fill the target size when stitched together.
+
+    Chooses patches with replacement.
+
+    :param patches: the patches to choose from
+    :param target_size: the size of the desired quilt of patches
+    :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
+    :param allow_rotation: whether to allow patches to be rotated when matching them
+
+    :return: patches that will at least fill the target size when stitched together.
+             Note that after stitching, the resulting array may be larger than the target size.
+
+    """
+    if allow_rotation:
+        raise NotImplementedError(
+            "Randomly choosing patches with rotation is not yet implemented"
+        )
+
+
+def optimally_choose_patches(
+    patches: Iterable[np.ndarray],
+    target_size: tuple[int, int],
+    patch_overlap: int,
+    allow_rotation: bool = False,
+    *,
+    repeat_penalty: float = 0.0,
+) -> list[np.ndarray]:
+    """
+    Choose patches that will at least fill the target size when stitched together, such that the overlap
+    between patches is optimal.
+
+    Chooses the first patch randomly, then builds up the first row by matching the left edge of each patch
+    to the right edge of the previous patch.
+    The first patch in subsequent rows are chosen according to its match with the bottom edge of the first patch,
+    then the rest of the patches in the row are chosen by matching the top and left edges of the patches.
+
+    Patches are chosen with replacement, but repeatedly using the same patch can be penalised by setting
+    `repeat_penalty` to a positive value.
+
+    :param patches: the patches to choose from
+    :param target_size: the size of the desired quilt of patches
+    :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
+    :param allow_rotation: whether to allow patches to be rotated when matching them
+    :param repeat_penalty: a penalty for using the same patch multiple times, to encourage diversity in the patches used
+
+    :return: patches that will at least fill the target size when stitched together.
+             Note that after stitching, the resulting array may be larger than the target size.
+
+    """
+    if allow_rotation:
+        raise NotImplementedError(
+            "Randomly choosing patches with rotation is not yet implemented"
+        )
+
+    if repeat_penalty < 0:
+        warnings.warn(
+            f"Repeat penalty {repeat_penalty} is negative; this will not penalise repeated patches",
+            RuntimeWarning,
+        )
 
 
 def quilt(
