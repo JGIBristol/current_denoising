@@ -18,6 +18,12 @@ class PatchError(Exception):
     """
 
 
+class PatchSizeMismatchError(PatchError):
+    """
+    Patches are not all the same size, somehow
+    """
+
+
 def _ceildiv(a: int, b: int) -> int:
     """
     Return the ceiling of the division of a by b.
@@ -62,6 +68,19 @@ def _patch_layout(
     )
 
 
+def _verify_patches(patches: Iterable[np.ndarray]) -> None:
+    """
+    Perform some basic checks on the patches to ensure they are suitable for quilting.
+
+    Checks that they are all the same size and 2d.
+
+    """
+    if not all((patch.shape == patches[0].shape for patch in patches)):
+        raise PatchSizeMismatchError("All patches must be the same size")
+    if not all((len(patch.shape) == 2 for patch in patches)):
+        raise PatchSizeMismatchError("All patches must be 2d")
+
+
 def randomly_choose_patches(
     patches: Iterable[np.ndarray],
     target_size: tuple[int, int],
@@ -78,6 +97,7 @@ def randomly_choose_patches(
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
     :param allow_rotation: whether to allow patches to be rotated when matching them
 
+    :raises PatchSizeMismatchError: if the patches are not all the same size or they are not all 2d
     :return: patches that will at least fill the target size when stitched together.
              Note that after stitching, the resulting array may be larger than the target size.
 
@@ -86,6 +106,9 @@ def randomly_choose_patches(
         raise NotImplementedError(
             "Randomly choosing patches with rotation is not yet implemented"
         )
+
+    _verify_patches(patches)
+    n_col, n_row = _patch_layout(target_size, patches[0].shape, patch_overlap)
 
 
 def optimally_choose_patches(
@@ -128,6 +151,9 @@ def optimally_choose_patches(
             f"Repeat penalty {repeat_penalty} is negative; this will not penalise repeated patches",
             RuntimeWarning,
         )
+
+    _verify_patches(patches)
+    n_col, n_row = _patch_layout(target_size, patches[0].shape, patch_overlap)
 
 
 def quilt(

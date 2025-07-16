@@ -92,3 +92,17 @@ def test_3d_patches():
 
     with pytest.raises(quilting.PatchError):
         quilting.quilt(patches, target_size=None, patch_overlap=None)
+
+
+def test_patch_verification():
+    """
+    Check that _verify_patches raises an error if patches are not all the same size or not 2d
+
+    """
+    quilting._verify_patches([np.ones((2, 2)), np.ones((2, 2))])
+
+    with pytest.raises(quilting.PatchSizeMismatchError):
+        quilting._verify_patches([np.ones((2, 2)), np.ones((3, 3))])
+
+    with pytest.raises(quilting.PatchSizeMismatchError):
+        quilting._verify_patches([np.ones((2, 2, 2)), np.ones((2, 2, 2))])
