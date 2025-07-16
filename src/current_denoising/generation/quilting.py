@@ -133,12 +133,12 @@ def _get_best_patch(
 
     Comparison patch should be already sliced
     """
-    score = float("-inf")
+    score = float("inf")
     best_patch = None
     for patch in patches:
         overlap_region = patch[patch_slice]
         mse = np.sum((overlap_region - comparison_patch) ** 2)
-        if mse > score:
+        if mse < score:
             score = mse
             best_patch = patch
 
@@ -190,7 +190,7 @@ def _best_patch_compare_top_left(
     left_comparison_patch = left_comparison_patch[:, -patch_overlap:]
     top_comparison_patch = top_comparison_patch[-patch_overlap:, :]
 
-    score = float("-inf")
+    score = float("inf")
     best_patch = None
     for patch in patches:
         left_overlap_region = patch[:, :patch_overlap]
@@ -198,7 +198,7 @@ def _best_patch_compare_top_left(
         mse = np.sum((left_overlap_region - left_comparison_patch) ** 2) + np.sum(
             (top_overlap_region - top_comparison_patch) ** 2
         )
-        if mse > score:
+        if mse < score:
             score = mse
             best_patch = patch
 
