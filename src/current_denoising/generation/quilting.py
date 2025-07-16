@@ -194,7 +194,7 @@ def _best_patch_compare_top_left(
     best_patch = None
     for patch in patches:
         left_overlap_region = patch[:, :patch_overlap]
-        top_overlap_region = patch[patch_overlap:, :]
+        top_overlap_region = patch[:patch_overlap, :]
         mse = np.sum((left_overlap_region - left_comparison_patch) ** 2) + np.sum(
             (top_overlap_region - top_comparison_patch) ** 2
         )
