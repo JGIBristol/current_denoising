@@ -279,8 +279,9 @@ def optimally_choose_patches(
 
         # Compare the rest of them to the top and left edges of the previous patches
         for j in range(1, n_col):
-            # TODO the L shaped comparison
-            out_list[i][j] = out_list[i - 1][j]
+            out_list[i][j] = _best_patch_compare_top_left(
+                patches, out_list[i][j - 1], out_list[i - 1][j], patch_overlap
+            )
 
     return out_list
 
