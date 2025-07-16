@@ -118,7 +118,7 @@ def randomly_choose_patches(
     for i in range(n_row):
         for j in range(n_col):
             out_list[i][j] = rng.choice(patches)
-    
+
     return out_list
 
 
