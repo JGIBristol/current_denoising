@@ -369,22 +369,24 @@ def naive_join_patches(
     patch_h, patch_w = patches[0][0].shape
     for i in range(n_rows):
         for j in range(n_cols):
-            start_x = j * (patch_w - patch_overlap)
-            end_x = min(start_x + patch_w, target_size[0])
-
             start_y = i * (patch_h - patch_overlap)
-            end_y = min(start_y + patch_h, target_size[1])
+            end_y = min(start_y + patch_h, target_size[0])
+
+            start_x = j * (patch_w - patch_overlap)
+            end_x = min(start_x + patch_w, target_size[1])
 
             # We might have to crop the patch if it doesn't fit exactly
-            x_slice = (
-                slice(0, end_x - start_x) if end_x - start_x < patch_w else slice(None)
-            )
             y_slice = (
                 slice(0, end_y - start_y) if end_y - start_y < patch_h else slice(None)
             )
+            x_slice = (
+                slice(0, end_x - start_x) if end_x - start_x < patch_w else slice(None)
+            )
 
-            result[start_y:end_y, start_x:end_x] += patches[i][j][x_slice, y_slice]
-            counts[start_y:end_y, start_x:end_x] += np.ones_like(patches[i][j][x_slice, y_slice])
+            result[start_y:end_y, start_x:end_x] += patches[i][j][y_slice, x_slice]
+            counts[start_y:end_y, start_x:end_x] += np.ones_like(
+                patches[i][j][y_slice, x_slice]
+            )
 
     return result / counts
 
