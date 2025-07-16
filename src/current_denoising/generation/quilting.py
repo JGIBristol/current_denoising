@@ -122,6 +122,29 @@ def randomly_choose_patches(
     return out_list
 
 
+def _get_best_patch(
+    patches: Iterable[np.ndarray],
+    comparison_patch: np.ndarray,
+    patch_slice: tuple[slice, slice],
+) -> np.ndarray:
+    """
+    Iterate over patches, and find the one that best matches the comparison patch
+    in the specified slice.
+
+    Comparison patch should be already sliced
+    """
+    score = float("-inf")
+    best_patch = None
+    for patch in patches:
+        overlap_region = patch[patch_slice]
+        mse = np.sum((overlap_region - comparison_patch) ** 2)
+        if mse > score:
+            score = mse
+            best_patch = patch
+
+    return best_patch
+
+
 def _best_patch_compare_left(
     patches: Iterable[np.ndarray],
     comparison_patch: np.ndarray,
@@ -129,16 +152,26 @@ def _best_patch_compare_left(
 ) -> np.ndarray:
     """
     Iterate over patches, and find the one that best matches the comparison patch
+    along its right edge
     """
-    score = float("-inf")
-    best_patch = None
-    for patch in patches:
-        overlap_region = patch[:, :patch_overlap]
-        mse = np.sum((overlap_region - comparison_patch) ** 2)
-        if mse > score:
-            score = mse
-            best_patch = patch
-    return best_patch
+    # We just want to take the right bit of the comparison patch
+    comparison_patch = comparison_patch[:, -patch_overlap:]
+
+    return _get_best_patch(
+        patches, comparison_patch, (slice(None), slice(None, patch_overlap))
+    )
+
+
+def _best_patch_compare_top(
+    patches: Iterable[np.ndarray], comparison_patch: np.ndarray, patch_overlap: int
+) -> np.ndarray:
+    """ """
+    # We just want to take the bottom bit of the comparison patch
+    comparison_patch = comparison_patch[-patch_overlap:, :]
+
+    return _get_best_patch(
+        patches, comparison_patch, (slice(None, patch_overlap), slice(None))
+    )
 
 
 def optimally_choose_patches(
@@ -201,13 +234,24 @@ def optimally_choose_patches(
     for i in range(1, n_col):
         # We want to compare the overlap region on the right of the previous patch
         # with the overlap region on the left of the current patch
-        comparison_patch = out_list[0][i - 1][:, -patch_overlap:]
+        comparison_patch = out_list[0][i - 1]
 
         # Iterate over all the patches and find the best one
         out_list[0][i] = _best_patch_compare_left(
             patches, comparison_patch, patch_overlap
         )
 
+    # For the next rows, choose the first patch according to its match with the bottom edge of the first patch
+    for i in range(1, n_row):
+        # Compare the first one to the bottom edge of the first patch
+        out_list[i][0] = _best_patch_compare_top(patches, out_list[0][0], patch_overlap)
+
+        # Compare the rest of them to the top and left edges of the previous patches
+        for j in range(1, n_col):
+            # TODO the L shaped comparison
+            out_list[i][j] = out_list[i - 1][j]
+
+    return out_list
 
 
 def quilt(
