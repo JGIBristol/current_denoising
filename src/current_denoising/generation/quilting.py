@@ -336,6 +336,59 @@ def optimally_choose_patches(
     return out_list
 
 
+def naive_join_patches(
+    patches: list[list[np.ndarray]], patch_overlap: int, target_size: tuple[int, int]
+) -> np.ndarray:
+    """
+    Join the patches together using a naive averaging in the overlap.
+
+    :param patches: the patches to join together
+    :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
+
+    :raises PatchError: if patches is a ragged array or if the patches are not all the same size
+    :raises PatchError: if the number of patches passed in does not work with the given target size and patch overlap
+    :return: the joined patches, with the overlap averaged
+    """
+    if any(len(row) != len(patches[0]) for row in patches):
+        raise PatchError("Patches must be a rectangular array")
+    if any(any(patch.shape != patches[0][0].shape for patch in row) for row in patches):
+        raise PatchError("Patches must all be the same size")
+    if (len(patches[0]), len(patches)) != _patch_layout(
+        target_size, patches[0][0].shape, patch_overlap
+    ):
+        raise PatchError(
+            f"Number of patches {len(patches), len(patches[0])} incompatible with {target_size=} and {patch_overlap=}"
+        )
+
+    n_rows, n_cols = len(patches), len(patches[0])
+
+    result = np.zeros(target_size)
+    # Track how many times each pixel has been used, so we can average the overlaps
+    counts = np.zeros(target_size)
+
+    patch_h, patch_w = patches[0][0].shape
+    for i in range(n_rows):
+        for j in range(n_cols):
+            start_x = j * (patch_w - patch_overlap)
+            end_x = min(start_x + patch_w, target_size[0])
+
+            start_y = i * (patch_h - patch_overlap)
+            end_y = min(start_y + patch_h, target_size[1])
+
+            # We might have to crop the patch if it doesn't fit exactly
+            x_slice = (
+                slice(0, end_x - start_x) if end_x - start_x < patch_w else slice(None)
+            )
+            y_slice = (
+                slice(0, end_y - start_y) if end_y - start_y < patch_h else slice(None)
+            )
+
+            result[start_y:end_y, start_x:end_x] += patches[i][j][x_slice, y_slice]
+            counts[start_y:end_y, start_x:end_x] += np.ones_like(patches[i][j][x_slice, y_slice])
+
+    return result / counts
+
+
 def quilt(
     patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
 ) -> np.ndarray:
