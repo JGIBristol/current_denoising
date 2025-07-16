@@ -173,6 +173,29 @@ def optimally_choose_patches(
     _verify_patches(patches)
     n_col, n_row = _patch_layout(target_size, patches[0].shape, patch_overlap)
 
+    out_list = [[None for _ in range(n_col)] for _ in range(n_row)]
+
+    # Choose the first patch randomly
+    out_list[0][0] = rng.choice(patches)
+
+    # Choose the first row by matching the left edge of each patch to the right edge of the previous patch
+    for i in range(1, n_col):
+        # We want to compare the overlap region on the right of the previous patch
+        # with the overlap region on the left of the current patch
+        comparison_patch = out_list[0][i - 1][:, -patch_overlap:]
+
+        # Iterate over all the patches and find the MSE for each
+        score = float("-inf")
+        best_patch = None
+        for patch in patches:
+            overlap_region = patch[:, :patch_overlap]
+            mse = np.mean((overlap_region - comparison_patch) ** 2)
+            if mse > score:
+                print(score, mse)
+                score = mse
+                best_patch = patch
+        out_list[0][i] = best_patch
+
 
 def quilt(
     patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
