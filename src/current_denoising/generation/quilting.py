@@ -174,6 +174,37 @@ def _best_patch_compare_top(
     )
 
 
+def _best_patch_compare_top_left(
+    patches: Iterable[np.ndarray],
+    left_comparison_patch: np.ndarray,
+    top_comparison_patch: np.ndarray,
+    patch_overlap: int,
+) -> np.ndarray:
+    """
+    Find the best patch that matches both the left and top edges of the comparison patches.
+
+    This double-counts the overlap region, since it compares it to both the left and top edges,
+    but I think this is fine
+    """
+    # We want the right of the patch on the left, and the bottom of the patch on top
+    left_comparison_patch = left_comparison_patch[:, -patch_overlap:]
+    top_comparison_patch = top_comparison_patch[-patch_overlap:, :]
+
+    score = float("-inf")
+    best_patch = None
+    for patch in patches:
+        left_overlap_region = patch[:, :patch_overlap]
+        top_overlap_region = patch[patch_overlap:, :]
+        mse = np.sum((left_overlap_region - left_comparison_patch) ** 2) + np.sum(
+            (top_overlap_region - top_comparison_patch) ** 2
+        )
+        if mse > score:
+            score = mse
+            best_patch = patch
+
+    return best_patch
+
+
 def optimally_choose_patches(
     patches: Iterable[np.ndarray],
     target_size: tuple[int, int],
