@@ -122,6 +122,25 @@ def randomly_choose_patches(
     return out_list
 
 
+def _find_best_patch(
+    patches: Iterable[np.ndarray],
+    comparison_patch: np.ndarray,
+    patch_overlap: int,
+) -> np.ndarray:
+    """
+    Iterate over patches, and find the one that best matches the comparison patch
+    """
+    score = float("-inf")
+    best_patch = None
+    for patch in patches:
+        overlap_region = patch[:, :patch_overlap]
+        mse = np.sum((overlap_region - comparison_patch) ** 2)
+        if mse > score:
+            score = mse
+            best_patch = patch
+    return best_patch
+
+
 def optimally_choose_patches(
     patches: Iterable[np.ndarray],
     target_size: tuple[int, int],
@@ -184,17 +203,9 @@ def optimally_choose_patches(
         # with the overlap region on the left of the current patch
         comparison_patch = out_list[0][i - 1][:, -patch_overlap:]
 
-        # Iterate over all the patches and find the MSE for each
-        score = float("-inf")
-        best_patch = None
-        for patch in patches:
-            overlap_region = patch[:, :patch_overlap]
-            mse = np.mean((overlap_region - comparison_patch) ** 2)
-            if mse > score:
-                print(score, mse)
-                score = mse
-                best_patch = patch
-        out_list[0][i] = best_patch
+        # Iterate over all the patches and find the best one
+        out_list[0][i] = _find_best_patch(patches, comparison_patch, patch_overlap)
+
 
 
 def quilt(
