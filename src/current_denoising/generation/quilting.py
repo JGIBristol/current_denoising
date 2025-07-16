@@ -275,7 +275,9 @@ def optimally_choose_patches(
     # For the next rows, choose the first patch according to its match with the bottom edge of the first patch
     for i in range(1, n_row):
         # Compare the first one to the bottom edge of the first patch
-        out_list[i][0] = _best_patch_compare_top(patches, out_list[i-1][0], patch_overlap)
+        out_list[i][0] = _best_patch_compare_top(
+            patches, out_list[i - 1][0], patch_overlap
+        )
 
         # Compare the rest of them to the top and left edges of the previous patches
         for j in range(1, n_col):
