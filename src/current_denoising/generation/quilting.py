@@ -128,6 +128,7 @@ def optimally_choose_patches(
     patch_overlap: int,
     allow_rotation: bool = False,
     *,
+    rng: np.random.Generator,
     repeat_penalty: float = 0.0,
 ) -> list[np.ndarray]:
     """
@@ -146,6 +147,7 @@ def optimally_choose_patches(
     :param target_size: the size of the desired quilt of patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
     :param allow_rotation: whether to allow patches to be rotated when matching them
+    :param rng: a random number generator, used to choose the first patch
     :param repeat_penalty: a penalty for using the same patch multiple times, to encourage diversity in the patches used
 
     :return: patches that will at least fill the target size when stitched together.
@@ -155,6 +157,11 @@ def optimally_choose_patches(
     if allow_rotation:
         raise NotImplementedError(
             "Randomly choosing patches with rotation is not yet implemented"
+        )
+
+    if patch_overlap == 0:
+        raise PatchError(
+            "Patch overlap must be non-zero; if you want no overlap, use `randomly_choose_patches`"
         )
 
     if repeat_penalty < 0:
