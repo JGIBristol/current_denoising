@@ -122,7 +122,7 @@ def randomly_choose_patches(
     return out_list
 
 
-def _find_best_patch(
+def _best_patch_compare_left(
     patches: Iterable[np.ndarray],
     comparison_patch: np.ndarray,
     patch_overlap: int,
@@ -204,7 +204,9 @@ def optimally_choose_patches(
         comparison_patch = out_list[0][i - 1][:, -patch_overlap:]
 
         # Iterate over all the patches and find the best one
-        out_list[0][i] = _find_best_patch(patches, comparison_patch, patch_overlap)
+        out_list[0][i] = _best_patch_compare_left(
+            patches, comparison_patch, patch_overlap
+        )
 
 
 
