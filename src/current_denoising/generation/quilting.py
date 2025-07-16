@@ -86,6 +86,8 @@ def randomly_choose_patches(
     target_size: tuple[int, int],
     patch_overlap: int,
     allow_rotation: bool = False,
+    *,
+    rng: np.random.Generator,
 ) -> list[list[np.ndarray]]:
     """
     Randomly choose patches that will at least fill the target size when stitched together.
@@ -96,6 +98,7 @@ def randomly_choose_patches(
     :param target_size: the size of the desired quilt of patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
     :param allow_rotation: whether to allow patches to be rotated when matching them
+    :param rng: a random number generator
 
     :raises PatchSizeMismatchError: if the patches are not all the same size or they are not all 2d
     :return: patches that will at least fill the target size when stitched together.
@@ -109,6 +112,14 @@ def randomly_choose_patches(
 
     _verify_patches(patches)
     n_col, n_row = _patch_layout(target_size, patches[0].shape, patch_overlap)
+
+    out_list = [[None for _ in range(n_col)] for _ in range(n_row)]
+
+    for i in range(n_row):
+        for j in range(n_col):
+            out_list[i][j] = rng.choice(patches)
+    
+    return out_list
 
 
 def optimally_choose_patches(
