@@ -399,6 +399,12 @@ def overlap_cost(
     """
     Find the cost matrix of overlapping a candidate patch onto an existing image at a given position.
 
+    Returns an array the same shape as the candidate patch, where each pixel is the cost of overlapping
+    that pixel onto the existing image at the given position.
+    The rest of the array is filled with `np.inf` to indicate that those pixels are not overlapping.
+    The values are located from the candidate patch's perspective; for example, adding a patch
+    on to the right of the existing image will give values on the left of the cost matrix.
+
     :param existing_image: the existing image to overlap onto
     :param candidate_patch: the patch to overlap
     :param position: the position (y, x) of the top-left corner of the candidate patch in the existing image

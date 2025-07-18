@@ -106,3 +106,40 @@ def test_patch_verification():
 
     with pytest.raises(quilting.PatchSizeMismatchError):
         quilting._verify_patches([np.ones((2, 2, 2)), np.ones((2, 2, 2))])
+
+
+@pytest.fixture
+def simple_existing_patch():
+    """10x10 image filled with 0s"""
+    return np.zeros((10, 10))
+
+
+@pytest.fixture
+def simple_candidate_patch():
+    """patch with values increasing"""
+    return np.arange(9).reshape((3, 3))
+
+
+def test_vertical_overlap_cost(simple_existing_patch, simple_candidate_patch):
+    """
+    Check we get the right cost map for a vertical overlap
+    """
+    # Add a square of numbers in the top left corner of the existing patch
+    # This will look like
+    # 0 2 4
+    # 6 8 10
+    # 12 14 16
+    simple_existing_patch[0:3, 0:3] = simple_candidate_patch * 2
+
+    # Overlap the new patch on the right of the existing one
+    pos = (0, 2)
+
+    cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
+
+    expected_cost = np.ones_like(simple_candidate_patch) * np.inf
+    expected_cost[:, 2] = [2, 5, 8]
+    print()
+    print(expected_cost)
+
+    np.testing.assert_array_equal(cost_map, expected_cost)
+
