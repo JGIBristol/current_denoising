@@ -137,9 +137,28 @@ def test_vertical_overlap_cost(simple_existing_patch, simple_candidate_patch):
     cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
 
     expected_cost = np.ones_like(simple_candidate_patch) * np.inf
-    expected_cost[:, 2] = [2, 5, 8]
-    print()
-    print(expected_cost)
+    expected_cost[:, 2] = [4, 25, 64]
+
+    np.testing.assert_array_equal(cost_map, expected_cost)
+
+
+def test_horizontal_overlap_cost(simple_existing_patch, simple_candidate_patch):
+    """
+    Check we get the right cost map for a horizontal overlap
+    """
+    # Add a square of numbers in the top left corner of the existing patch
+    # This will look like
+    # 0 2 4
+    # 6 8 10
+    # 12 14 16
+    simple_existing_patch[0:3, 0:3] = simple_candidate_patch * 2
+
+    pos = (2, 0)
+
+    cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
+
+    expected_cost = np.full((3, 3), np.inf)
+    expected_cost[2] = [36, 49, 64]
 
     np.testing.assert_array_equal(cost_map, expected_cost)
 
