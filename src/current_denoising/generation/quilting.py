@@ -391,6 +391,24 @@ def naive_join_patches(
     return result / counts
 
 
+def overlap_cost(
+    existing_image: np.ndarray,
+    candidate_patch: np.ndarray,
+    position: tuple[int, int],
+) -> np.ndarray:
+    """
+    Find the cost matrix of overlapping a candidate patch onto an existing image at a given position.
+
+    :param existing_image: the existing image to overlap onto
+    :param candidate_patch: the patch to overlap
+    :param position: the position (y, x) of the top-left corner of the candidate patch in the existing image
+
+    :return: a cost matrix of the same shape as the candidate patch, where each pixel is the cost of overlapping
+             that pixel onto the existing image at the given position.
+             The cost is defined as the squared difference between the existing image and the candidate patch.
+    """
+
+
 def quilt(
     patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
 ) -> np.ndarray:
