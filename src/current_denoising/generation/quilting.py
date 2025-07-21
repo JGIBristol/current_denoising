@@ -6,6 +6,7 @@ Based on "Image Quilting for Texture Synthesis and Transfer" (Efros and Freeman 
 """
 
 import sys
+import heapq
 import warnings
 from typing import Iterable
 
@@ -31,6 +32,12 @@ class PatchSizeMismatchError(PatchError):
 class GraphConstructionError(PatchError):
     """
     General exception for an issue with constructing the graph
+    """
+
+
+class GraphTraversalError(PatchError):
+    """
+    General exception for an issue with traversing the graph
     """
 
 
@@ -535,6 +542,40 @@ def shortest_path(graph: AdjacencyList) -> list[tuple[int, int]]:
     :param graph: the graph to traverse, represented as an adjacency list
     :returns: a list of nodes in the shortest path, starting from "START" and ending at "END"
     """
+    dist = {}
+    prev = {}
+    visited = set()
+    queue = []
+
+    heapq.heappush(queue, (0, "START"))
+    dist["START"] = 0
+
+    while queue:
+        current_cost, current_node = heapq.heappop(queue)
+        if current_node in visited:
+            continue
+        visited.add(current_node)
+
+        if current_node == "END":
+            break
+
+        for neighbor, cost in graph[current_node]:
+            if neighbor in visited:
+                continue
+            new_cost = current_cost + cost
+            if neighbor not in dist or new_cost < dist[neighbor]:
+                dist[neighbor] = new_cost
+                prev[neighbor] = current_node
+                heapq.heappush(queue, (new_cost, neighbor))
+
+    # Reconstruct path from END to START
+    path = []
+    node = prev.get("END")
+    while node and node != "START":
+        path.append(node)
+        node = prev.get(node)
+    path.reverse()
+    return path
 
 
 def quilt(
