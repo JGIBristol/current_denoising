@@ -110,8 +110,8 @@ def test_patch_verification():
 
 @pytest.fixture
 def simple_existing_patch():
-    """10x10 image filled with 0s"""
-    return np.zeros((10, 10))
+    """Initialise a 10x10 patch with unfilled pixels"""
+    return quilting._unfilled_image((10, 10))
 
 
 @pytest.fixture

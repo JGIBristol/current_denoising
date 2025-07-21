@@ -391,6 +391,16 @@ def naive_join_patches(
     return result / counts
 
 
+def _unfilled_image(shape: tuple[int, int]) -> np.ndarray:
+    """
+    Create an image of the given shape filled with `np.inf`, to indicate that it is unfilled.
+
+    :param shape: the shape of the image to create
+    :return: an image of the given shape filled with `np.inf`
+    """
+    return np.full(shape, np.inf, dtype=np.float32)
+
+
 def overlap_cost(
     existing_image: np.ndarray,
     candidate_patch: np.ndarray,
@@ -401,7 +411,9 @@ def overlap_cost(
 
     Returns an array the same shape as the candidate patch, where each pixel is the cost of overlapping
     that pixel onto the existing image at the given position.
-    The rest of the array is filled with `np.inf` to indicate that those pixels are not overlapping.
+
+    Unfilled pixels in the existing image should be labelled with `np.inf`.
+
     The values are located from the candidate patch's perspective; for example, adding a patch
     on to the right of the existing image will give values on the left of the cost matrix.
 
