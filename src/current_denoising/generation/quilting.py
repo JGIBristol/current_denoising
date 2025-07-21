@@ -510,7 +510,7 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
         # We only want to add the end node if it is reachable
         if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
-    if not any("END" in neighbours for neighbours in graph.values()):
+    if not any(("END", 0) in graph.get(node, set()) for node in end_nodes if node in graph):
         for end_node in end_nodes:
             print(f"Node {end_node} not in graph: {cost_matrix[end_node]}", file=sys.stderr)
         raise GraphConstructionError(f"No valid end nodes found for edge {end}")

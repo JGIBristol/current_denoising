@@ -336,6 +336,7 @@ def test_diagonal_graph(simple_candidate_patch):
         },
         (1, 0): {
             ((1, 1), 4.0),
+            ((2, 0), 6.0),
         },
         (1, 1): {
             ((0, 1), 1.0),
