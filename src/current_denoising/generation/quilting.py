@@ -5,6 +5,7 @@ Based on "Image Quilting for Texture Synthesis and Transfer" (Efros and Freeman 
 
 """
 
+import sys
 import warnings
 from typing import Iterable
 
@@ -500,13 +501,17 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
         if cost_matrix[node] != np.inf:
             graph["START"].add((node, cost_matrix[node]))
     if not graph["START"]:
-        raise GraphConstructionError(f"No valid start nodes found for edge {start}:\n\t{'\t'.join(map(str, start_nodes))}")
+        for start_node in start_nodes:
+            print(f"Node {start_node} not in graph: {cost_matrix[start_node]}", file=sys.stderr)
+        raise GraphConstructionError(f"No valid start nodes found for edge {start}")
 
     for node in end_nodes:
         if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
     if not any("END" in neighbours for neighbours in graph.values()):
-        raise GraphConstructionError(f"No valid end nodes found for edge {end}:\n\t{'\t'.join(map(str, end_nodes))}")
+        for end_node in end_nodes:
+            print(f"Node {end_node} not in graph: {cost_matrix[end_node]}", file=sys.stderr)
+        raise GraphConstructionError(f"No valid end nodes found for edge {end}")
 
     return graph
 
