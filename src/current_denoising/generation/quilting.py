@@ -10,7 +10,7 @@ from typing import Iterable
 
 import numpy as np
 
-AdjacencyList = dict[tuple[int, int] | str, list[tuple[tuple[int, int] | str, float]]]
+AdjacencyList = dict[tuple[int, int] | str, set[tuple[tuple[int, int] | str, float]]]
 """ An adjacency list for a weighted graph; {node: (neighbour, weight)} """
 
 
@@ -439,6 +439,17 @@ def overlap_cost(
     return costs
 
 
+def _terminal_nodes(edge: str, height: int, width: int) -> set[tuple[int, int]]:
+    if edge == "left":
+        return {(y, 0) for y in range(height)}
+    elif edge == "bottom":
+        return {(height - 1, x) for x in range(width)}
+    elif edge == "right":
+        return {(y, width - 1) for y in range(height)}
+    elif edge == "top":
+        return {(0, x) for x in range(width)}
+
+
 def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyList:
     """
     Convert a cost matrix to a graph (represented as an adjacency matrix).
@@ -450,7 +461,9 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
 
     :return: a graph represented as an adjacency list, where each node is a pixel in the cost matrix
     """
-    return None
+    assert start in {"left", "right", "top", "bottom"}, f"Invalid edge: {start=}"
+    assert end in {"left", "right", "top", "bottom"}, f"Invalid edge: {end=}"
+
     height, width = cost_matrix.shape
 
     graph: AdjacencyList = {}
@@ -471,6 +484,10 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
 
         if neighbours:
             graph[(y, x)] = neighbours
+
+    # Add the start and end nodes
+    start_nodes = _terminal_nodes(start, height, width)
+    end_nodes = _terminal_nodes(end, height, width)
 
     return graph
 
