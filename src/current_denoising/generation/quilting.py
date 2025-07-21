@@ -489,8 +489,8 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
             if y - 1 >= 0 and cost_matrix[y - 1, x] != np.inf:
                 neighbours.add(((y - 1, x), cost_matrix[y - 1, x]))
 
-        if neighbours:
-            graph[(y, x)] = neighbours
+            if neighbours:
+                graph[(y, x)] = neighbours
 
     # Add the start and end nodes
     start_nodes = _terminal_nodes(start, height, width)
