@@ -117,7 +117,7 @@ def unfilled_image():
 @pytest.fixture
 def simple_candidate_patch():
     """patch with values increasing"""
-    return np.arange(9).reshape((3, 3))
+    return np.arange(9, dtype=np.float32).reshape((3, 3))
 
 
 def test_vertical_overlap_cost(unfilled_image, simple_candidate_patch):
@@ -333,8 +333,6 @@ def test_cost_to_graph_diagonal(simple_candidate_patch):
         ],
     }
 
-    graph = quilting.cost_to_graph(
-        simple_candidate_patch, start="left", end="top"
-    )
+    graph = quilting.cost_to_graph(simple_candidate_patch, start="left", end="top")
 
     assert graph == expected_graph
