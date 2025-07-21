@@ -188,17 +188,23 @@ def test_corner_overlap_cost(unfilled_image, simple_candidate_patch):
 
     np.testing.assert_array_equal(cost_map, expected_cost)
 
+
 def test_invalid_graphs():
     """
     Check we raise an error if the graph is invalid
     """
     # Invalid start
     with pytest.raises(quilting.GraphConstructionError):
-        quilting.cost_to_graph(np.array([[np.inf, 2], [np.inf, 4]]), start="left", end="right")
+        quilting.cost_to_graph(
+            np.array([[np.inf, 2], [np.inf, 4]]), start="left", end="right"
+        )
 
     # Invalid end
     with pytest.raises(quilting.GraphConstructionError):
-        quilting.cost_to_graph(np.array([[1, 2], [np.inf, np.inf]]), start="top", end="bottom")
+        quilting.cost_to_graph(
+            np.array([[1, 2], [np.inf, np.inf]]), start="top", end="bottom"
+        )
+
 
 def test_simple_cost_to_graph(simple_candidate_patch):
     """
@@ -217,7 +223,8 @@ def test_simple_cost_to_graph(simple_candidate_patch):
             ((0, 1), 1),
         },
         (0, 1): {
-            ((2, 0), 2),
+            ((0, 0), 0),
+            ((0, 2), 2),
             ((1, 1), 4),
         },
         (0, 2): {
