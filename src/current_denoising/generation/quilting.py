@@ -27,6 +27,7 @@ class PatchSizeMismatchError(PatchError):
     Patches are not all the same size, somehow
     """
 
+
 class GraphConstructionError(PatchError):
     """
     General exception for an issue with constructing the graph
@@ -503,16 +504,24 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
             graph["START"].add((node, cost_matrix[node]))
     if not graph["START"]:
         for start_node in start_nodes:
-            print(f"Node {start_node} not in graph: {cost_matrix[start_node]}", file=sys.stderr)
+            print(
+                f"Node {start_node} not in graph: {cost_matrix[start_node]}",
+                file=sys.stderr,
+            )
         raise GraphConstructionError(f"No valid start nodes found for edge {start}")
 
     for node in end_nodes:
         # We only want to add the end node if it is reachable
         if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
-    if not any(("END", 0) in graph.get(node, set()) for node in end_nodes if node in graph):
+    if not any(
+        ("END", 0) in graph.get(node, set()) for node in end_nodes if node in graph
+    ):
         for end_node in end_nodes:
-            print(f"Node {end_node} not in graph: {cost_matrix[end_node]}", file=sys.stderr)
+            print(
+                f"Node {end_node} not in graph: {cost_matrix[end_node]}",
+                file=sys.stderr,
+            )
         raise GraphConstructionError(f"No valid end nodes found for edge {end}")
 
     return graph
