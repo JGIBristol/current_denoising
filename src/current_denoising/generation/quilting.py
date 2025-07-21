@@ -26,6 +26,11 @@ class PatchSizeMismatchError(PatchError):
     Patches are not all the same size, somehow
     """
 
+class GraphConstructionError(PatchError):
+    """
+    General exception for an issue with constructing the graph
+    """
+
 
 def _ceildiv(a: int, b: int) -> int:
     """
@@ -494,10 +499,14 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
     for node in start_nodes:
         if cost_matrix[node] != np.inf:
             graph["START"].add((node, cost_matrix[node]))
+    if not graph["START"]:
+        raise GraphConstructionError(f"No valid start nodes found for edge {start}:\n\t{'\t'.join(map(str, start_nodes))}")
 
     for node in end_nodes:
         if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
+    if not any("END" in neighbours for neighbours in graph.values()):
+        raise GraphConstructionError(f"No valid end nodes found for edge {end}:\n\t{'\t'.join(map(str, end_nodes))}")
 
     return graph
 
