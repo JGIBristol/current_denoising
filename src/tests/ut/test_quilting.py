@@ -357,3 +357,32 @@ def test_diagonal_graph(simple_candidate_patch):
     graph = quilting.cost_to_graph(simple_candidate_patch, start="left", end="top")
 
     assert graph == expected_graph
+
+
+def test_traversal():
+    """
+    Test that we can traverse the graph correctly
+    """
+    # Traversing from bottom to top:
+    # 2 0 0
+    # 2 . 9
+    # 1 3 0
+    graph = {
+        "START": {
+            ((2, 0), 1),
+            ((2, 1), 3),
+            ((2, 2), 0),
+        },
+        (0, 0): {((0, 1), 0), ((1, 0), 2), ("END", 0)},
+        (0, 1): {((0, 0), 2), ((0, 2), 0), ("END", 0)},
+        (0, 2): {((0, 1), 0), ((1, 2), 9), ("END", 0)},
+        (1, 0): {((0, 0), 2), ((2, 0), 1)},
+        (1, 2): {((0, 2), 0), ((2, 2), 0)},
+        (2, 0): {((1, 0), 2), ((2, 1), 3)},
+        (2, 1): {((2, 0), 1), ((2, 2), 0)},
+        (2, 2): {((1, 2), 9), ((2, 1), 3)},
+    }
+
+    expected_path = [(2, 0), (1, 0), (0, 0)]
+
+    assert quilting.shortest_path(graph) == expected_path
