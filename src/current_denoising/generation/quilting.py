@@ -580,6 +580,14 @@ def shortest_path(graph: AdjacencyList) -> list[tuple[int, int]]:
     return path
 
 
+def seam_nodes(cost_matrix: np.ndarray, start: str, end: str) -> list[tuple[int, int]]:
+    """
+    Find the nodes that form the optimal seam through the cost matrix.
+    """
+    graph = cost_to_graph(cost_matrix, start, end)
+    return shortest_path(graph)
+
+
 def quilt(
     patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
 ) -> np.ndarray:

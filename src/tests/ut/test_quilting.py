@@ -400,8 +400,6 @@ def test_traverse_array():
         dtype=np.float32,
     )
 
-    graph = quilting.cost_to_graph(cost_array, start="bottom", end="right")
-
     expected_path = [
         (4, 1),
         (3, 1),
@@ -414,4 +412,4 @@ def test_traverse_array():
         (0, 5),
     ]
 
-    assert quilting.shortest_path(graph) == expected_path
+    assert quilting.seam_nodes(cost_array, start="bottom", end="right") == expected_path
