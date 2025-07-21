@@ -187,3 +187,24 @@ def test_corner_overlap_cost(unfilled_image, simple_candidate_patch):
     )
 
     np.testing.assert_array_equal(cost_map, expected_cost)
+
+
+def test_simple_cost_to_graph(simple_candidate_patch):
+    """
+    Check we get the right graph from a simple cost matrix with no infinities
+
+    Horizontal traversal
+    """
+
+
+def test_cost_to_graph(simple_candidate_patch):
+    """
+    Check we get the right graph if the cost matrix has infinities
+    """
+
+
+def test_cost_to_graph_diagonal(unfilled_image):
+    """
+    Check we can correctly build a graph for a cost matrix where we will traverse from
+    the left to the top edge
+    """

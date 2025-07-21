@@ -10,7 +10,7 @@ from typing import Iterable
 
 import numpy as np
 
-AdjacencyList = dict[tuple[int, int], list[tuple[tuple[int, int], int]]]
+AdjacencyList = dict[tuple[int, int] | str, list[tuple[tuple[int, int] | str, int]]]
 """ An adjacency list for a weighted graph; {node: (neighbour, weight)} """
 
 
