@@ -414,8 +414,8 @@ def overlap_cost(
 
     Unfilled pixels in the existing image should be labelled with `np.inf`.
 
-    The values are located from the candidate patch's perspective; for example, adding a patch
-    on to the right of the existing image will give values on the left of the cost matrix.
+    The values are located from the image's perspective; for example, adding a patch
+    on to the right of the existing image will give non-inf values on the right of the cost matrix.
 
     :param existing_image: the existing image to overlap onto
     :param candidate_patch: the patch to overlap
@@ -425,6 +425,15 @@ def overlap_cost(
              that pixel onto the existing image at the given position.
              The cost is defined as the squared difference between the existing image and the candidate patch.
     """
+    # Pick out the region of the existing image that overlaps with the candidate patch
+    image_region = existing_image[
+        position[0] : position[0] + candidate_patch.shape[0],
+        position[1] : position[1] + candidate_patch.shape[1],
+    ]
+
+    costs = (image_region - candidate_patch) ** 2
+
+    return costs
 
 
 def quilt(

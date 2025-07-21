@@ -109,7 +109,7 @@ def test_patch_verification():
 
 
 @pytest.fixture
-def simple_existing_patch():
+def unfilled_image():
     """Initialise a 10x10 patch with unfilled pixels"""
     return quilting._unfilled_image((10, 10))
 
@@ -120,7 +120,7 @@ def simple_candidate_patch():
     return np.arange(9).reshape((3, 3))
 
 
-def test_vertical_overlap_cost(simple_existing_patch, simple_candidate_patch):
+def test_vertical_overlap_cost(unfilled_image, simple_candidate_patch):
     """
     Check we get the right cost map for a vertical overlap
     """
@@ -129,20 +129,20 @@ def test_vertical_overlap_cost(simple_existing_patch, simple_candidate_patch):
     # 0 2 4
     # 6 8 10
     # 12 14 16
-    simple_existing_patch[0:3, 0:3] = simple_candidate_patch * 2
+    unfilled_image[0:3, 0:3] = simple_candidate_patch * 2
 
     # Overlap the new patch on the right of the existing one
     pos = (0, 2)
 
-    cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
+    cost_map = quilting.overlap_cost(unfilled_image, simple_candidate_patch, pos)
 
     expected_cost = np.ones_like(simple_candidate_patch) * np.inf
-    expected_cost[:, 2] = [4, 25, 64]
+    expected_cost[:, 0] = [16, 49, 100]
 
     np.testing.assert_array_equal(cost_map, expected_cost)
 
 
-def test_horizontal_overlap_cost(simple_existing_patch, simple_candidate_patch):
+def test_horizontal_overlap_cost(unfilled_image, simple_candidate_patch):
     """
     Check we get the right cost map for a horizontal overlap
     """
@@ -151,19 +151,19 @@ def test_horizontal_overlap_cost(simple_existing_patch, simple_candidate_patch):
     # 0 2 4
     # 6 8 10
     # 12 14 16
-    simple_existing_patch[0:3, 0:3] = simple_candidate_patch * 2
+    unfilled_image[0:3, 0:3] = simple_candidate_patch * 2
 
     pos = (2, 0)
 
-    cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
+    cost_map = quilting.overlap_cost(unfilled_image, simple_candidate_patch, pos)
 
     expected_cost = np.full((3, 3), np.inf)
-    expected_cost[2] = [36, 49, 64]
+    expected_cost[0] = [144, 169, 196]
 
     np.testing.assert_array_equal(cost_map, expected_cost)
 
 
-def test_corner_overlap_cost(simple_existing_patch, simple_candidate_patch):
+def test_corner_overlap_cost(unfilled_image, simple_candidate_patch):
     """
     Check we get the right cost map for a corner overlap
     """
@@ -172,16 +172,16 @@ def test_corner_overlap_cost(simple_existing_patch, simple_candidate_patch):
     # 0 2 4
     # 6 8 10
     # 12 14 16
-    simple_existing_patch[0:3, 0:3] = simple_candidate_patch * 2
+    unfilled_image[0:3, 0:3] = simple_candidate_patch * 2
 
     pos = (1, 1)
 
-    cost_map = quilting.overlap_cost(simple_existing_patch, simple_candidate_patch, pos)
+    cost_map = quilting.overlap_cost(unfilled_image, simple_candidate_patch, pos)
 
     expected_cost = np.array(
         [
-            [16, 25, np.inf],
-            [49, 64, np.inf],
+            [64, 81, np.inf],
+            [121, 144, np.inf],
             [np.inf, np.inf, np.inf],
         ]
     )
