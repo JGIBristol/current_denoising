@@ -51,8 +51,8 @@ def _patch_layout(
     """
     Calculate how many patches are needed to fill the target size, given the patch size and overlap.
 
-    If the patch size does not fit exactly into the target size, this will give the number of patches needed
-    to fill the target size, with some extra which should be dealt with by the caller.
+    If the patch size does not fit exactly into the target size, this will give the number of patches
+    needed to fill the target size, with some extra which should be dealt with by the caller.
 
     :param target_size: the size of the desired quilt of patches
     :param patch_size: the size of each patch
@@ -449,12 +449,13 @@ def overlap_cost(
 def _terminal_nodes(edge: str, height: int, width: int) -> set[tuple[int, int]]:
     if edge == "left":
         return {(y, 0) for y in range(height)}
-    elif edge == "bottom":
+    if edge == "bottom":
         return {(height - 1, x) for x in range(width)}
-    elif edge == "right":
+    if edge == "right":
         return {(y, width - 1) for y in range(height)}
-    elif edge == "top":
+    if edge == "top":
         return {(0, x) for x in range(width)}
+    raise GraphConstructionError(f"Invalid edge: {edge}")
 
 
 def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyList:
@@ -527,6 +528,15 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
     return graph
 
 
+def shortest_path(graph: AdjacencyList) -> list[tuple[int, int]]:
+    """
+    Find the shortest path through the graph from the start node to the end node.
+
+    :param graph: the graph to traverse, represented as an adjacency list
+    :returns: a list of nodes in the shortest path, starting from "START" and ending at "END"
+    """
+
+
 def quilt(
     patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
 ) -> np.ndarray:
@@ -551,8 +561,8 @@ def quilt(
     patch_sizes = {patch.shape for patch in patches}
     try:
         (patch_size,) = patch_sizes
-    except ValueError:
-        raise PatchError(f"All patches must be the same size; got {patch_sizes}")
+    except ValueError as e:
+        raise PatchError(f"All patches must be the same size; got {patch_sizes}") from e
 
     # Check the patches are all 2d
     if len(patch_size) != 2:
