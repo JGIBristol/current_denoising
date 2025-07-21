@@ -382,3 +382,36 @@ def test_traversal():
     expected_path = [(2, 0), (1, 0), (0, 0)]
 
     assert quilting.shortest_path(graph) == expected_path
+
+
+def test_traverse_array():
+    """
+    Check that we get the expected path from an array
+    """
+    a = np.inf
+    cost_array = np.array(
+        [
+            [8, 0, 2, 1, 1, 1],
+            [4, 3, 1, 1, 3, 1],
+            [2, 2, 1, a, a, a],
+            [1, 1, 1, a, a, a],
+            [3, 1, 4, a, a, a],
+        ],
+        dtype=np.float32,
+    )
+
+    graph = quilting.cost_to_graph(cost_array, start="bottom", end="right")
+
+    expected_path = [
+        (4, 1),
+        (3, 1),
+        (3, 2),
+        (2, 2),
+        (1, 2),
+        (1, 3),
+        (0, 3),
+        (0, 4),
+        (0, 5),
+    ]
+
+    assert quilting.shortest_path(graph) == expected_path

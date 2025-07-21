@@ -8,6 +8,7 @@ Based on "Image Quilting for Texture Synthesis and Transfer" (Efros and Freeman 
 import sys
 import heapq
 import warnings
+from itertools import count
 from typing import Iterable
 
 import numpy as np
