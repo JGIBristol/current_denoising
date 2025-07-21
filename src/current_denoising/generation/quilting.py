@@ -546,12 +546,13 @@ def shortest_path(graph: AdjacencyList) -> list[tuple[int, int]]:
     prev = {}
     visited = set()
     queue = []
+    counter = count()  # Unique sequence count
 
-    heapq.heappush(queue, (0, "START"))
+    heapq.heappush(queue, (0, next(counter), "START"))
     dist["START"] = 0
 
     while queue:
-        current_cost, current_node = heapq.heappop(queue)
+        current_cost, _, current_node = heapq.heappop(queue)
         if current_node in visited:
             continue
         visited.add(current_node)
@@ -559,14 +560,14 @@ def shortest_path(graph: AdjacencyList) -> list[tuple[int, int]]:
         if current_node == "END":
             break
 
-        for neighbor, cost in graph[current_node]:
+        for neighbor, cost in graph.get(current_node, []):
             if neighbor in visited:
                 continue
             new_cost = current_cost + cost
             if neighbor not in dist or new_cost < dist[neighbor]:
                 dist[neighbor] = new_cost
                 prev[neighbor] = current_node
-                heapq.heappush(queue, (new_cost, neighbor))
+                heapq.heappush(queue, (new_cost, next(counter), neighbor))
 
     # Reconstruct path from END to START
     path = []
