@@ -247,7 +247,7 @@ def test_simple_cost_to_graph(simple_candidate_patch):
         ],
     }
 
-    graph = quilting.cost_to_graph(simple_candidate_patch)
+    graph = quilting.cost_to_graph(simple_candidate_patch, start="left", end="right")
 
     assert graph == expected_graph
 
@@ -256,6 +256,46 @@ def test_cost_to_graph(simple_candidate_patch):
     """
     Check we get the right graph if the cost matrix has infinities
     """
+    # Add some infinities to make the graph more complex
+    simple_candidate_patch[1, 1] = np.inf
+    simple_candidate_patch[1, 2] = np.inf
+    simple_candidate_patch[2, 2] = np.inf
+
+    expected_graph = {
+        "START": [
+            ((2, 0), 6),
+            ((2, 1), 7),
+        ],
+        (2, 0): [
+            ((2, 1), 7),
+            ((1, 0), 3),
+        ],
+        (2, 1): [
+            ((2, 0), 6),
+        ],
+        (1, 0): [
+            ((0, 0), 0),
+            ((2, 0), 6),
+        ],
+        (0, 0): [
+            ("END", 0),
+            ((1, 0), 3),
+            ((0, 1), 1),
+        ],
+        (0, 1): [
+            ("END", 0),
+            ((0, 0), 0),
+            ((0, 2), 2),
+        ],
+        (0, 2): [
+            ((0, 1), 1),
+            ("END", 0),
+        ],
+    }
+
+    graph = quilting.cost_to_graph(simple_candidate_patch, start="bottom", end="top")
+
+    assert graph == expected_graph
 
 
 def test_cost_to_graph_diagonal(unfilled_image):

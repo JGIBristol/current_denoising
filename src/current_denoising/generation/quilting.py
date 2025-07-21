@@ -439,12 +439,16 @@ def overlap_cost(
     return costs
 
 
-def cost_to_graph(cost_matrix: np.ndarray) -> AdjacencyList:
+def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyList:
     """
     Convert a cost matrix to a graph (represented as an adjacency matrix).
 
     :param cost_matrix: a cost matrix, where each pixel is the cost of overlapping that pixel onto the existing image
                       at the given position.
+    :param start: which edge to start traversal from
+    :param end: which edge to end traversal at
+
+    :return: a graph represented as an adjacency list, where each node is a pixel in the cost matrix
     """
     return None
     height, width = cost_matrix.shape
