@@ -496,7 +496,7 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
             graph["START"].add((node, cost_matrix[node]))
 
     for node in end_nodes:
-        if cost_matrix[node] != np.inf:
+        if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
 
     return graph

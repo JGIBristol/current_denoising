@@ -298,7 +298,7 @@ def test_cost_to_graph(simple_candidate_patch):
     assert graph == expected_graph
 
 
-def test_cost_to_graph_diagonal(simple_candidate_patch):
+def test_diagonal_graph(simple_candidate_patch):
     """
     Check we can correctly build a graph for a cost matrix where we will traverse from
     the left to the top edge
