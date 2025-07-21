@@ -472,15 +472,16 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
         for x in range(width):
             if cost_matrix[y, x] == np.inf:
                 continue
-            neighbours = []
+
+            neighbours = set()
             if x + 1 < width and cost_matrix[y, x + 1] != np.inf:
-                neighbours.append(((y, x + 1), cost_matrix[y, x + 1]))
+                neighbours.add(((y, x + 1), cost_matrix[y, x + 1]))
             if y + 1 < height and cost_matrix[y + 1, x] != np.inf:
-                neighbours.append(((y + 1, x), cost_matrix[y + 1, x]))
+                neighbours.add(((y + 1, x), cost_matrix[y + 1, x]))
             if x - 1 >= 0 and cost_matrix[y, x - 1] != np.inf:
-                neighbours.append(((y, x - 1), cost_matrix[y, x - 1]))
+                neighbours.add(((y, x - 1), cost_matrix[y, x - 1]))
             if y - 1 >= 0 and cost_matrix[y - 1, x] != np.inf:
-                neighbours.append(((y - 1, x), cost_matrix[y - 1, x]))
+                neighbours.add(((y - 1, x), cost_matrix[y - 1, x]))
 
         if neighbours:
             graph[(y, x)] = neighbours
@@ -488,6 +489,14 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
     # Add the start and end nodes
     start_nodes = _terminal_nodes(start, height, width)
     end_nodes = _terminal_nodes(end, height, width)
+
+    for node in start_nodes:
+        if cost_matrix[node] != np.inf:
+            graph["START"] = (node, cost_matrix[node])
+
+    for node in end_nodes:
+        if cost_matrix[node] != np.inf:
+            graph[node].add(("END", 0))
 
     return graph
 
