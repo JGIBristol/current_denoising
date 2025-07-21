@@ -498,6 +498,7 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
 
     graph["START"] = set()
     for node in start_nodes:
+        # We only want to add reachable (i.e. non-inf) start nodes
         if cost_matrix[node] != np.inf:
             graph["START"].add((node, cost_matrix[node]))
     if not graph["START"]:
@@ -506,6 +507,7 @@ def cost_to_graph(cost_matrix: np.ndarray, start: str, end: str) -> AdjacencyLis
         raise GraphConstructionError(f"No valid start nodes found for edge {start}")
 
     for node in end_nodes:
+        # We only want to add the end node if it is reachable
         if cost_matrix[node] != np.inf and node in graph:
             graph[node].add(("END", 0))
     if not any("END" in neighbours for neighbours in graph.values()):
