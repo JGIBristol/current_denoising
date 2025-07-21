@@ -10,6 +10,9 @@ from typing import Iterable
 
 import numpy as np
 
+AdjacencyList = dict[tuple[int, int], list[tuple[tuple[int, int], int]]]
+""" An adjacency list for a weighted graph; {node: (neighbour, weight)} """
+
 
 class PatchError(Exception):
     """
@@ -434,6 +437,38 @@ def overlap_cost(
     costs = (image_region - candidate_patch) ** 2
 
     return costs
+
+
+def cost_to_graph(cost_matrix: np.ndarray) -> AdjacencyList:
+    """
+    Convert a cost matrix to a graph (represented as an adjacency matrix).
+
+    :param cost_matrix: a cost matrix, where each pixel is the cost of overlapping that pixel onto the existing image
+                      at the given position.
+    """
+    return None
+    height, width = cost_matrix.shape
+
+    graph: AdjacencyList = {}
+
+    for y in range(height):
+        for x in range(width):
+            if cost_matrix[y, x] == np.inf:
+                continue
+            neighbours = []
+            if x + 1 < width and cost_matrix[y, x + 1] != np.inf:
+                neighbours.append(((y, x + 1), cost_matrix[y, x + 1]))
+            if y + 1 < height and cost_matrix[y + 1, x] != np.inf:
+                neighbours.append(((y + 1, x), cost_matrix[y + 1, x]))
+            if x - 1 >= 0 and cost_matrix[y, x - 1] != np.inf:
+                neighbours.append(((y, x - 1), cost_matrix[y, x - 1]))
+            if y - 1 >= 0 and cost_matrix[y - 1, x] != np.inf:
+                neighbours.append(((y - 1, x), cost_matrix[y - 1, x]))
+
+        if neighbours:
+            graph[(y, x)] = neighbours
+
+    return graph
 
 
 def quilt(
