@@ -548,12 +548,34 @@ def seam_nodes(cost_matrix: np.ndarray, start: str, end: str) -> list[tuple[int,
     return shortest_path(graph)
 
 
+def _seam_edge(costs: np.ndarray) -> bool:
+    """
+    Identify whether this edge (1d array) is a seam edge.
+    """
+    if np.all(costs == np.inf):
+        return False
+    if np.all(np.isfinite(costs)):
+        return False
+    return True
+
+
 def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
     """
     Find the edges of the cost matrix that are suitable for finding a seam.
 
     These should be the edges that are not fully filled with `np.inf` or numerical values.
     """
+    edges = set()
+    if _seam_edge(cost_matrix[0]):
+        edges.add("top")
+    if _seam_edge(cost_matrix[-1]):
+        edges.add("bottom")
+    if _seam_edge(cost_matrix[:, 0]):
+        edges.add("left")
+    if _seam_edge(cost_matrix[:, -1]):
+        edges.add("right")
+
+    return edges
 
 
 def add_patch(
