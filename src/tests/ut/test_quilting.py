@@ -453,11 +453,10 @@ def test_seam_edges():
     ) == {"bottom", "right"}
 
 
-def test_merge_mask():
+def test_merge_mask_mainline():
     """
     Check we can correctly build a mask for merging patches
     """
-    # Mainline case
     shape = (5, 5)
     seam = [(2, i) for i in range(5)]
 
@@ -472,6 +471,80 @@ def test_merge_mask():
     )
     assert np.array_equal(
         quilting._merge_mask(shape, seam, "left", "right"), expected_mask
+    )
+
+
+def test_merge_mask_vertical():
+    """
+    Check we can correctly build a mask for merging patches vertically - including cases
+    where we need to reseed the flood fill
+    """
+    shape = (5, 5)
+    seam = [(0, 1), (1, 1), (1, 0), (2, 0), (3, 0), (3, 1), (4, 1)]
+
+    expected_mask = np.array(
+        [
+            [1, 0, 2, 2, 2],
+            [0, 0, 2, 2, 2],
+            [0, 2, 2, 2, 2],
+            [0, 0, 2, 2, 2],
+            [1, 0, 2, 2, 2],
+        ]
+    )
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "top", "bottom"), expected_mask
+    )
+
+    # Reflect it to check we can also handle the opposite edge
+    seam = [(i, 4 - j) for i, j in seam]
+    expected_mask = np.array(
+        [
+            [1, 1, 1, 0, 2],
+            [1, 1, 1, 0, 0],
+            [1, 1, 1, 1, 0],
+            [1, 1, 1, 0, 0],
+            [1, 1, 1, 0, 2],
+        ]
+    )
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "bottom", "top"), expected_mask
+    )
+
+
+def test_merge_mask_horizontal():
+    """
+    Check we can correctly build a mask for merging patches horizontally - including cases
+    where we need to reseed the flood fill
+    """
+    shape = (5, 5)
+    seam = [(1, 0), (1, 1), (0, 1), (0, 2), (0, 3), (1, 3), (1, 4)]
+
+    expected_mask = np.array(
+        [
+            [1, 0, 0, 0, 1],
+            [0, 0, 2, 0, 0],
+            [2, 2, 2, 2, 2],
+            [2, 2, 2, 2, 2],
+            [2, 2, 2, 2, 2],
+        ]
+    )
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "left", "right"), expected_mask
+    )
+
+    # Reflect it to check we can also handle the opposite edge
+    seam = [(i, 4 - j) for i, j in seam]
+    expected_mask = np.array(
+        [
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [0, 0, 1, 0, 0],
+            [2, 0, 0, 0, 2],
+        ]
+    )
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "right", "left"), expected_mask
     )
 
 
