@@ -604,8 +604,15 @@ def add_patch(
         )
 
     # Find the type of overlap - should either be left to right, top to bottom or bottom to right
+    seam_edges = _identify_seam_edges(cost)
+
     # Warn if its something else
-    # Construct the cost matrix
+    if seam_edges not in ({"top", "bottom"}, {"left", "right"}, {"bottom", "right"}):
+        warnings.warn(
+            f"Did not expect to find seam from {' to '.join(seam_edges)}",
+            RuntimeWarning,
+        )
+
     # Find the minimal cost seam through the cost matrix
     # Use this seam to stitch the patch onto the existing image
 
