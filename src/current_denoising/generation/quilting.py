@@ -578,7 +578,9 @@ def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
     return edges
 
 
-def _merge_mask(patch_shape: tuple[int, int], seam: list[tuple[int, int]], to: str, from: str) -> np.ndarray:
+def _merge_mask(
+    patch_shape: tuple[int, int], seam: list[tuple[int, int]], seam_edges: set[str]
+) -> np.ndarray:
     """
     A mask indicating which pixel to fill with values from which array.
 
@@ -586,6 +588,25 @@ def _merge_mask(patch_shape: tuple[int, int], seam: list[tuple[int, int]], to: s
     1 - the existing patch
     2 - the candidate patch
     """
+    if len(seam_edges) != 2:
+        raise ValueError(f"Expected exactly two seam edges, got {seam_edges}")
+
+    if seam_edges not in ({"top", "bottom"}, {"left", "right"}, {"bottom", "right"}):
+        warnings.warn(
+            f"Did not expect to find seam from {' to '.join(seam_edges)}",
+            RuntimeWarning,
+        )
+
+    h, w = patch_shape
+    mask = np.full(patch_shape, -1, dtype=int)
+
+    # Fill the seam with 0s
+    seam = np.array(seam)
+    y_seam, x_seam = seam[:, 0], seam[:, 1]
+    mask[y_seam, x_seam] = 0
+
+    return mask
+
 
 def _merge_patches(
     existing_patch: np.ndarray, candidate_patch: np.ndarray, seam: list[tuple[int, int]]

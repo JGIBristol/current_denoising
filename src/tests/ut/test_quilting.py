@@ -470,7 +470,7 @@ def test_merge_mask_mainline():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "left", "right"), expected_mask
+        quilting._merge_mask(shape, seam, {"left", "right"}), expected_mask
     )
 
 
@@ -492,7 +492,7 @@ def test_merge_mask_vertical():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "top", "bottom"), expected_mask
+        quilting._merge_mask(shape, seam, {"top", "bottom"}), expected_mask
     )
 
     # Reflect it to check we can also handle the opposite edge
@@ -507,7 +507,7 @@ def test_merge_mask_vertical():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "bottom", "top"), expected_mask
+        quilting._merge_mask(shape, seam, {"bottom", "top"}), expected_mask
     )
 
 
@@ -529,7 +529,7 @@ def test_merge_mask_horizontal():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "left", "right"), expected_mask
+        quilting._merge_mask(shape, seam, {"left", "right"}), expected_mask
     )
 
     # Reflect it to check we can also handle the opposite edge
@@ -544,7 +544,7 @@ def test_merge_mask_horizontal():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "right", "left"), expected_mask
+        quilting._merge_mask(shape, seam, {"right", "left"}), expected_mask
     )
 
 
@@ -577,11 +577,11 @@ def test_merge_mask_diagonal():
         ]
     )
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "bottom", "right"), expected_mask
+        quilting._merge_mask(shape, seam, {"bottom", "right"}), expected_mask
     )
 
     assert np.array_equal(
-        quilting._merge_mask(shape, seam, "right", "bottom"), expected_mask
+        quilting._merge_mask(shape, seam, {"right", "bottom"}), expected_mask
     )
 
 
