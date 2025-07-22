@@ -469,7 +469,7 @@ def test_merge_lr(simple_candidate_patch):
         ]
     )
 
-    merged_patch = quilting._merge_patches(existing_patch, candidate_patch, seam)
+    merged_patch = quilting._merge_patches(patch1, patch2, seam)
 
     np.testing.assert_array_equal(merged_patch, expected_patch)
 

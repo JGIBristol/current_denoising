@@ -633,7 +633,7 @@ def add_patch(
     seam = seam_nodes(cost, *seam_edges)
 
     # Use this seam to stitch the patch onto the existing image
-    merged_patch = merge_patches(existing_patch, candidate_patch, seam)
+    merged_patch = _merge_patches(existing_patch, candidate_patch, seam)
 
     # Place the merged patch back into the existing image
     result = existing_image.copy()
