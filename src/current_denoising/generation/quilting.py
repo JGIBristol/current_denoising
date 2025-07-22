@@ -274,7 +274,7 @@ def optimally_choose_patches(
     *,
     rng: np.random.Generator,
     repeat_penalty: float = 0.0,
-) -> list[np.ndarray]:
+) -> list[list[np.ndarray]]:
     """
     Choose patches that will at least fill the target size when stitched together, such that the overlap
     between patches is optimal.
@@ -843,7 +843,12 @@ def naive_quilt(
 
 
 def quilt(
-    patches: Iterable[np.ndarray], *, target_size: tuple[int, int], patch_overlap: int
+    patches: Iterable[np.ndarray],
+    *,
+    target_size: tuple[int, int],
+    patch_overlap: int,
+    rng: np.random.Generator,
+    repeat_penalty: float = 0.0,
 ) -> np.ndarray:
     """
     Quilt together a collection of patches to give an array of the provided size.
@@ -874,16 +879,37 @@ def quilt(
         raise PatchError(f"Patches must be 2d, not {patch_size}")
 
     # Find how many patches we need to build up to the target size
-    # Emit a warning if it doesn't fit exactly - we'll have to crop the last rows/columns
+    n_col, n_row = _patch_layout(target_size, patch_size, patch_overlap)
+    patch_grid = optimally_choose_patches(
+        patches,
+        target_size,
+        patch_overlap,
+        rng=rng,
+        repeat_penalty=repeat_penalty,
+    )
 
-    # Init a list of lists holding the patches
-    # Choose a random patch to start with
-    # Choose optimal patches to build up the first row, applying vertical stitches
-    # Choose optimal patches to build up the rest of the array
+    # TODO warn if the patches are larger than the target - we'll need to crop
 
-    # Add vertical stitches in the first row
-    # Add horizontal/diagonal seams to the rest of the patches
-    # build this into the ideal quilt
+    # Init an array of the right size ()
+    array_size = (
+        n_row * (patch_size[0] - patch_overlap) + patch_overlap,
+        n_col * (patch_size[1] - patch_overlap) + patch_overlap,
+    )
+    result = _unfilled_image(array_size)
+
+    result[0 : patch_size[0], 0 : patch_size[1]] = patch_grid[0][0]
+
+    # Now stitch the patches together
+    for i in range(n_row):
+        for j in range(n_col):
+            if i == 0 and j == 0:
+                continue
+            # Get the position of the patch in the result array
+            pos_y = i * (patch_size[0] - patch_overlap)
+            pos_x = j * (patch_size[1] - patch_overlap)
+
+            result = add_patch(result, patch_grid[i][j], (pos_y, pos_x))
 
     # Check that the quilt is the right size
-    return
+
+    return result
