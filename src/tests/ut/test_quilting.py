@@ -533,7 +533,7 @@ def test_merge_mask_horizontal():
     )
 
     # Reflect it to check we can also handle the opposite edge
-    seam = [(i, 4 - j) for i, j in seam]
+    seam = [(4 - i, j) for i, j in seam]
     expected_mask = np.array(
         [
             [1, 1, 1, 1, 1],
