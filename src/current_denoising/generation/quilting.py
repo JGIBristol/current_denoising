@@ -371,6 +371,18 @@ def _unfilled_image(shape: tuple[int, int]) -> np.ndarray:
     return np.full(shape, np.inf, dtype=np.float32)
 
 
+def _image_region(
+    existing_image: np.ndarray, patch_shape: tuple[int, int], position: tuple[int, int]
+) -> np.ndarray:
+    """
+    Get the relevant region of the existing image if we're overlapping a patch at the given position.
+    """
+    return existing_image[
+        position[0] : position[0] + patch_shape[0],
+        position[1] : position[1] + patch_shape[1],
+    ]
+
+
 def overlap_cost(
     existing_image: np.ndarray,
     candidate_patch: np.ndarray,
@@ -395,13 +407,7 @@ def overlap_cost(
              that pixel onto the existing image at the given position.
              The cost is defined as the squared difference between the existing image and the candidate patch.
     """
-    # Pick out the region of the existing image that overlaps with the candidate patch
-    image_region = existing_image[
-        position[0] : position[0] + candidate_patch.shape[0],
-        position[1] : position[1] + candidate_patch.shape[1],
-    ]
-
-    costs = (image_region - candidate_patch) ** 2
+    costs = (_image_region(existing_image, candidate_patch.shape, position) - candidate_patch) ** 2
 
     return costs
 
