@@ -548,6 +548,43 @@ def test_merge_mask_horizontal():
     )
 
 
+def test_merge_mask_diagonal():
+    """
+    Check we can correctly build a mask for merging patches from bottom -> right
+    """
+    shape = (5, 5)
+    seam = [
+        (4, 1),
+        (3, 1),
+        (3, 0),
+        (2, 0),
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (1, 3),
+        (1, 4),
+    ]
+
+    expected_mask = np.array(
+        [
+            [1, 0, 0, 0, 1],
+            [0, 0, 2, 0, 0],
+            [0, 2, 2, 2, 2],
+            [0, 0, 2, 2, 2],
+            [1, 0, 2, 2, 2],
+        ]
+    )
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "bottom", "right"), expected_mask
+    )
+
+    assert np.array_equal(
+        quilting._merge_mask(shape, seam, "right", "bottom"), expected_mask
+    )
+
+
 def test_merge_lr(simple_candidate_patch):
     """
     Check we can merge two patches along a seam (left -> right)
