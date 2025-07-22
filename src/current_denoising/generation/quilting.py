@@ -407,7 +407,9 @@ def overlap_cost(
              that pixel onto the existing image at the given position.
              The cost is defined as the squared difference between the existing image and the candidate patch.
     """
-    costs = (_image_region(existing_image, candidate_patch.shape, position) - candidate_patch) ** 2
+    costs = (
+        _image_region(existing_image, candidate_patch.shape, position) - candidate_patch
+    ) ** 2
 
     return costs
 
@@ -550,14 +552,29 @@ def add_patch(
     existing_image: np.ndarray, candidate_patch: np.ndarray, position: tuple[int, int]
 ) -> np.ndarray:
     """
-    Add a candidate patch to an existing image at a given position, averaging the overlap.
+    Add a candidate patch to an existing image at a given position, stitching them using the optimal seam.
+
+    Unfilled pixels in the existing image should be labelled with `np.inf`.
+    An average of the pixel values in the two images along the seam will be used.
 
     :param existing_image: the existing image to add the patch to
     :param candidate_patch: the patch to add
     :param position: the position (y, x) of the top-left corner of the candidate patch in the existing image
 
-    :return: the existing image with the candidate patch added, with the overlap averaged
+    :return: the existing image with the candidate patch added, with the overlap stitched
     """
+    # Pick out the relevant region of the existing image
+    existing_patch = _image_region(existing_image, candidate_patch.shape, position)
+
+    # Find the overlap of the patch and image
+    cost = overlap_cost(existing_image, candidate_patch, position)
+
+    # Raise if there is no overlap
+    # Find the type of overlap - should either be left to right, top to bottom or bottom to right
+    # Warn if its something else
+    # Construct the cost matrix
+    # Find the minimal cost seam through the cost matrix
+    # Use this seam to stitch the patch onto the existing image
 
 
 def naive_quilt(

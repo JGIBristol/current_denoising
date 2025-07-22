@@ -413,3 +413,48 @@ def test_traverse_array():
     ]
 
     assert quilting.seam_nodes(cost_array, start="bottom", end="right") == expected_path
+
+
+def test_add_patch_left(unfilled_image):
+    """
+    Check we can correctly add a patch to the left of an existing image
+    The seam here has 0 cost
+
+    """
+    # Add a patch to the top left of the existing image
+    unfilled_image[0:3, 0:3] = np.arange(9, dtype=np.float32).reshape((3, 3))
+
+    patch = np.array(
+        [
+            [3, 3, 1],
+            [5, 6, 1],
+            [8, 7, 1],
+        ]
+    )
+
+    expected_array = quilting._unfilled_image(unfilled_image.shape)
+    expected_array[0:3, 0:4] = np.array(
+        [
+            [1, 2, 3, 1],
+            [4, 5, 6, 1],
+            [7, 8, 7, 1],
+        ]
+    )
+
+    np.testing.assert_array_equal(
+        quilting.add_patch(unfilled_image, patch, (0, 3)), expected_array
+    )
+
+
+def test_add_patch_below():
+    """
+    Check we can correctly add a patch below an existing image
+
+    """
+
+
+def test_add_patch_diag():
+    """
+    Check we can correctly add a patch diagonally to an existing image
+
+    """
