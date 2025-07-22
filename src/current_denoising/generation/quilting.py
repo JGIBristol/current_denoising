@@ -578,7 +578,7 @@ def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
     return edges
 
 
-def _merge_mask(patch_shape: tuple[int, int], seam: list[tuple[int, int]]) -> np.ndarray:
+def _merge_mask(patch_shape: tuple[int, int], seam: list[tuple[int, int]], to: str, from: str) -> np.ndarray:
     """
     A mask indicating which pixel to fill with values from which array.
 
