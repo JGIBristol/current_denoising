@@ -699,7 +699,7 @@ def test_add_patch_below(unfilled_image):
         [
             [1, 2, 3],
             [3, 4, 6],
-            [7, 7, 8],
+            [100, 7, 8],
             [1, 1, 1],
         ]
     )
