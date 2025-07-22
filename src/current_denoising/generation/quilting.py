@@ -568,8 +568,11 @@ def add_patch(
 
     # Find the overlap of the patch and image
     cost = overlap_cost(existing_image, candidate_patch, position)
+    if np.all(cost == np.inf):
+        raise PatchError(
+            "No overlap between existing image and candidate patch; cannot stitch"
+        )
 
-    # Raise if there is no overlap
     # Find the type of overlap - should either be left to right, top to bottom or bottom to right
     # Warn if its something else
     # Construct the cost matrix
