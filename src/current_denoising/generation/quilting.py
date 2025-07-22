@@ -49,6 +49,7 @@ class GraphTraversalError(PatchError):
     General exception for an issue with traversing the graph
     """
 
+
 class StitchingError(PatchError):
     """
     Error stitching the patches together
@@ -584,6 +585,66 @@ def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
     return edges
 
 
+def _reseed(
+    seam_edges: set[str], mask: np.ndarray
+) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    """
+    Find a new seed to start from, based on the current mask and seam edges.
+
+    Returns None if no new seed is appropriate or could be found
+
+    Returns (existing_seed, candidate_seed)
+    """
+    unfilled = np.argwhere(mask == -1)
+
+    if seam_edges == {"bottom", "right"}:
+        # We shouldn't have to re-seed the candidate patch since
+        # all pixels should be fillable from the bottom right corner.
+        # So we'll just look for a new seed for the existing patch
+        # on the left or top edges
+        for y, x in unfilled:
+            if y == 0 or x == 0:
+                return (y, x), None
+
+    if seam_edges == {"top", "bottom"}:
+        # Look for new seeds for the existing patch on the left
+        # and for the candidate patch on the right
+        for y, x in unfilled:
+            if x == 0:
+                existing_seed = (y, x)
+                break
+        else:
+            existing_seed = None
+        for y, x in unfilled:
+            if x == mask.shape[1] - 1:
+                candidate_seed = (y, x)
+                break
+        else:
+            candidate_seed = None
+        return existing_seed, candidate_seed
+
+    if seam_edges == {"left", "right"}:
+        # Look for new seeds for the existing patch on the top
+        # and for the candidate patch on the bottom
+        for y, x in unfilled:
+            if y == 0:
+                existing_seed = (y, x)
+                break
+        else:
+            existing_seed = None
+        for y, x in unfilled:
+            if y == mask.shape[0] - 1:
+                candidate_seed = (y, x)
+                break
+        else:
+            candidate_seed = None
+        return existing_seed, candidate_seed
+
+    raise NotImplementedError(
+        "Reseeding for this seam edge not implemented - we shouldn't be able to get here"
+    )
+
+
 def _merge_mask(
     patch_shape: tuple[int, int], seam: list[tuple[int, int]], seam_edges: set[str]
 ) -> np.ndarray:
@@ -621,15 +682,21 @@ def _merge_mask(
         n_to_fill = np.sum(mask == -1)
 
         # Propagate out from our seeds and fill in the mask
-        reach = flood(mask != 0, existing_seed, footprint=footprint)
-        mask[reach & (mask == -1)] = 1
+        if existing_seed is not None:
+            reach = flood(mask != 0, existing_seed, footprint=footprint)
+            mask[reach & (mask == -1)] = 1
 
-        reach = flood(mask != 0, candidate_seed, footprint=footprint)
-        mask[reach & (mask == -1)] = 2
+        if candidate_seed is not None:
+            reach = flood(mask != 0, candidate_seed, footprint=footprint)
+            mask[reach & (mask == -1)] = 2
 
         # If we didn't fill any, something has gone wrong
         if n_to_fill == np.sum(mask == -1):
             raise StitchingError("Failed to fill mask")
+
+        # Otherwise, try to find a new seed
+        if np.any(mask == -1):
+            existing_seed, candidate_seed = _reseed(seam_edges, mask)
 
     return mask
 
