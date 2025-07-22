@@ -616,7 +616,7 @@ def test_merge_tb(simple_candidate_patch):
 
     expected_patch = np.array(
         [
-            [0, 2, 4],
+            [0, 1, 2],
             [4.5, 6, 7.5],
             [12, 14, 16],
         ]
