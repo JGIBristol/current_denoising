@@ -12,6 +12,7 @@ from itertools import count
 from typing import Iterable
 
 import numpy as np
+from skimage.segmentation import flood
 
 __all__ = [
     "optimally_choose_patches",
@@ -597,13 +598,26 @@ def _merge_mask(
             RuntimeWarning,
         )
 
-    h, w = patch_shape
     mask = np.full(patch_shape, -1, dtype=int)
 
     # Fill the seam with 0s
     seam = np.array(seam)
     y_seam, x_seam = seam[:, 0], seam[:, 1]
     mask[y_seam, x_seam] = 0
+
+    # Start by trying to seed the mask from the top-left and bottom-right
+    h, w = patch_shape
+    existing_seed = (0, 0)
+    candidate_seed = (h - 1, w - 1)
+
+    footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
+
+    while np.any(mask == -1):
+        reach = flood(mask != 0, existing_seed, footprint=footprint)
+        mask[reach & (mask == -1)] = 1
+
+        reach = flood(mask != 0, candidate_seed, footprint=footprint)
+        mask[reach & (mask == -1)] = 2
 
     return mask
 
