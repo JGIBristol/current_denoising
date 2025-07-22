@@ -722,7 +722,20 @@ def _merge_patches(
             f"Cannot merge patches of different shapes: {existing_patch.shape} and {candidate_patch.shape}"
         )
 
+    # Find where we should take pixels from each patch (and where we should average)
     mask = _merge_mask(existing_patch.shape, seam, seam_edges)
+
+    # Fill in the pixels of the merged patch
+    merged_patch = np.full_like(existing_patch, np.nan, dtype=np.float32)
+    merged_patch[mask == 1] = existing_patch[mask == 1]
+    merged_patch[mask == 2] = candidate_patch[mask == 2]
+
+    # The seam takes the average of the two patches
+    merged_patch[mask == 0] = (
+        existing_patch[mask == 0] + candidate_patch[mask == 0]
+    ) / 2.0
+
+    return merged_patch
 
 
 def add_patch(
