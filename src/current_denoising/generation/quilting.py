@@ -615,6 +615,16 @@ def add_patch(
     seam = seam_nodes(cost, *seam_edges)
 
     # Use this seam to stitch the patch onto the existing image
+    merged_patch = merge_patches(existing_patch, candidate_patch, seam)
+
+    # Place the merged patch back into the existing image
+    result = existing_image.copy()
+    result[
+        position[0] : position[0] + merged_patch.shape[0],
+        position[1] : position[1] + merged_patch.shape[1],
+    ] = merged_patch
+
+    return result
 
 
 def naive_quilt(
