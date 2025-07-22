@@ -476,8 +476,37 @@ def test_add_patch_below(unfilled_image):
     )
 
 
-def test_add_patch_diag():
+def test_add_patch_diag(unfilled_image):
     """
     Check we can correctly add a patch diagonally to an existing image
 
     """
+    # Build up a slightly more complicated image
+    unfilled_image[0:6, 0:6] = np.arange(36, dtype=np.float32).reshape((6, 6))
+    unfilled_image[6:9, 0:3] = np.arange(36, 45).reshape((3, 3))
+
+    position = (4, 0)
+    patch = np.array(
+        [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 30, 31, 34, 35],
+            [0, 0, 36, 10, 10, 10],
+            [0, 40, 41, 10, 10, 10],
+            [0, 41, 0, 10, 10, 10],
+        ]
+    )
+
+    expected_array = quilting._unfilled_image(unfilled_image.shape)
+    expected_array[0:5, 0:6] = np.arange(30).reshape((5, 6))
+    expected_array[5:9, 0:6] = np.array(
+        [
+            [30, 31, 31, 32, 34, 35],
+            [36, 37, 37, 10, 10, 10],
+            [39, 40, 41, 10, 10, 10],
+            [42, 42, 0, 10, 10, 10],
+        ]
+    )
+
+    actual_array = quilting.add_patch(unfilled_image, patch, position)
+
+    np.testing.assert_array_equal(actual_array, expected_array)
