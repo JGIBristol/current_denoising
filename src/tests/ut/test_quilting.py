@@ -422,7 +422,7 @@ def test_add_patch_left(unfilled_image):
 
     """
     # Add a patch to the top left of the existing image
-    unfilled_image[0:3, 0:3] = np.arange(9, dtype=np.float32).reshape((3, 3))
+    unfilled_image[0:3, 0:3] = np.arange(1, 10, dtype=np.float32).reshape((3, 3))
 
     patch = np.array(
         [
@@ -442,15 +442,38 @@ def test_add_patch_left(unfilled_image):
     )
 
     np.testing.assert_array_equal(
-        quilting.add_patch(unfilled_image, patch, (0, 3)), expected_array
+        quilting.add_patch(unfilled_image, patch, (0, 1)), expected_array
     )
 
 
-def test_add_patch_below():
+def test_add_patch_below(unfilled_image):
     """
     Check we can correctly add a patch below an existing image
+    The seam here has nonzero cost, so pixels along it should be averaged
 
     """
+    unfilled_image[0:3, 0:3] = np.arange(1, 10, dtype=np.float32).reshape((3, 3))
+    patch = np.array(
+        [
+            [2, 3, 100],
+            [100, 6, 7],
+            [1, 1, 1],
+        ]
+    )
+
+    expected_array = quilting._unfilled_image(unfilled_image.shape)
+    expected_array[0:4, 0:3] = np.array(
+        [
+            [1, 2, 3],
+            [3, 4, 6],
+            [7, 7, 8],
+            [1, 1, 1],
+        ]
+    )
+
+    np.testing.assert_array_equal(
+        quilting.add_patch(unfilled_image, patch, (1, 0)), expected_array
+    )
 
 
 def test_add_patch_diag():
