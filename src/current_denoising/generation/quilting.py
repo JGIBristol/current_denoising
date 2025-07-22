@@ -548,6 +548,14 @@ def seam_nodes(cost_matrix: np.ndarray, start: str, end: str) -> list[tuple[int,
     return shortest_path(graph)
 
 
+def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
+    """
+    Find the edges of the cost matrix that are suitable for finding a seam.
+
+    These should be the edges that are not fully filled with `np.inf` or numerical values.
+    """
+
+
 def add_patch(
     existing_image: np.ndarray, candidate_patch: np.ndarray, position: tuple[int, int]
 ) -> np.ndarray:

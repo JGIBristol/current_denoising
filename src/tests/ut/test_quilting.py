@@ -415,6 +415,44 @@ def test_traverse_array():
     assert quilting.seam_nodes(cost_array, start="bottom", end="right") == expected_path
 
 
+def test_seam_edges():
+    """
+    Check we can correctly identify the seam edges for a cost matrix
+    """
+    # Top to bottom
+    assert quilting._identify_seam_edges(
+        np.array(
+            [
+                [1, 0, np.inf],
+                [1, 0, np.inf],
+                [1, 0, np.inf],
+            ]
+        )
+    ) == {"top", "bottom"}
+
+    # Left to right
+    assert quilting._identify_seam_edges(
+        np.array(
+            [
+                [1, 0, 2],
+                [1, 0, 2],
+                [np.inf, np.inf, np.inf],
+            ]
+        )
+    ) == {"left", "right"}
+
+    # Bottom to right
+    assert quilting._identify_seam_edges(
+        np.array(
+            [
+                [1, 0, 2],
+                [1, 0, 2],
+                [1, 0, np.inf],
+            ]
+        )
+    ) == {"bottom", "right"}
+
+
 def test_add_patch_left(unfilled_image):
     """
     Check we can correctly add a patch to the left of an existing image
