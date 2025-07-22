@@ -453,6 +453,68 @@ def test_seam_edges():
     ) == {"bottom", "right"}
 
 
+def test_merge_lr(simple_candidate_patch):
+    """
+    Check we can merge two patches along a seam (left -> right)
+    """
+    patch1 = simple_candidate_patch
+    patch2 = simple_candidate_patch * 2
+    seam = [(0, 1), (1, 1), (2, 1)]
+
+    expected_patch = np.array(
+        [
+            [0, 1.5, 4],
+            [3, 6, 10],
+            [6, 10.5, 16],
+        ]
+    )
+
+    merged_patch = quilting._merge_patches(existing_patch, candidate_patch, seam)
+
+    np.testing.assert_array_equal(merged_patch, expected_patch)
+
+
+def test_merge_tb(simple_candidate_patch):
+    """
+    Check we can merge two patches along a seam vertically (top -> bottom)
+    """
+    patch1 = simple_candidate_patch
+    patch2 = simple_candidate_patch * 2
+    seam = [(1, 0), (1, 1), (1, 2)]
+
+    expected_patch = np.array(
+        [
+            [0, 2, 4],
+            [4.5, 6, 7.5],
+            [12, 14, 16],
+        ]
+    )
+
+    merged_patch = quilting._merge_patches(patch1, patch2, seam)
+
+    np.testing.assert_array_equal(merged_patch, expected_patch)
+
+def test_merge_br(simple_candidate_patch):
+    """
+    Check we can merge two patches along a seam diagonally (bottom -> right)
+    """
+    patch1 = simple_candidate_patch
+    patch2 = simple_candidate_patch * 2
+    seam = [(2, 1), (1, 1), (1, 2)]
+
+    expected_patch = np.array(
+        [
+            [0, 1, 2],
+            [3, 6, 7.5],
+            [6, 10.5, 16],
+        ]
+    )
+
+    merged_patch = quilting._merge_patches(patch1, patch2, seam)
+
+    np.testing.assert_array_equal(merged_patch, expected_patch)
+
+
 def test_add_patch_left(unfilled_image):
     """
     Check we can correctly add a patch to the left of an existing image
