@@ -601,7 +601,7 @@ def test_merge_lr(simple_candidate_patch):
         ]
     )
 
-    merged_patch = quilting._merge_patches(patch1, patch2, seam)
+    merged_patch = quilting._merge_patches(patch1, patch2, seam, {"left", "right"})
 
     np.testing.assert_array_equal(merged_patch, expected_patch)
 
@@ -622,7 +622,7 @@ def test_merge_tb(simple_candidate_patch):
         ]
     )
 
-    merged_patch = quilting._merge_patches(patch1, patch2, seam)
+    merged_patch = quilting._merge_patches(patch1, patch2, seam, {"top", "bottom"})
 
     np.testing.assert_array_equal(merged_patch, expected_patch)
 
@@ -643,7 +643,7 @@ def test_merge_br(simple_candidate_patch):
         ]
     )
 
-    merged_patch = quilting._merge_patches(patch1, patch2, seam)
+    merged_patch = quilting._merge_patches(patch1, patch2, seam, {"bottom", "right"})
 
     np.testing.assert_array_equal(merged_patch, expected_patch)
 

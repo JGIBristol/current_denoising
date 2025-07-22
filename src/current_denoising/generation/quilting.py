@@ -702,7 +702,10 @@ def _merge_mask(
 
 
 def _merge_patches(
-    existing_patch: np.ndarray, candidate_patch: np.ndarray, seam: list[tuple[int, int]]
+    existing_patch: np.ndarray,
+    candidate_patch: np.ndarray,
+    seam: list[tuple[int, int]],
+    seam_edges: set[str],
 ) -> np.ndarray:
     """
     Merge the existing patch and candidate patch along a seam.
@@ -710,6 +713,7 @@ def _merge_patches(
     :param existing_patch: the existing patch to merge
     :param candidate_patch: the candidate patch to merge
     :param seam: the seam, as a list of (y, x) co-ords, to use for merging
+    :param seam_edges: the edges of the cost matrix that are suitable for finding a seam
 
     :return: the merged patch
     """
@@ -717,6 +721,8 @@ def _merge_patches(
         raise PatchError(
             f"Cannot merge patches of different shapes: {existing_patch.shape} and {candidate_patch.shape}"
         )
+
+    mask = _merge_mask(existing_patch.shape, seam, seam_edges)
 
 
 def add_patch(
@@ -756,7 +762,7 @@ def add_patch(
     seam = seam_nodes(cost, *seam_edges)
 
     # Use this seam to stitch the patch onto the existing image
-    merged_patch = _merge_patches(existing_patch, candidate_patch, seam)
+    merged_patch = _merge_patches(existing_patch, candidate_patch, seam, seam_edges)
 
     # Place the merged patch back into the existing image
     result = existing_image.copy()
