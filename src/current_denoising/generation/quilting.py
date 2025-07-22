@@ -49,6 +49,11 @@ class GraphTraversalError(PatchError):
     General exception for an issue with traversing the graph
     """
 
+class StitchingError(PatchError):
+    """
+    Error stitching the patches together
+    """
+
 
 def _ceildiv(a: int, b: int) -> int:
     """
@@ -613,11 +618,18 @@ def _merge_mask(
     footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
 
     while np.any(mask == -1):
+        n_to_fill = np.sum(mask == -1)
+
+        # Propagate out from our seeds and fill in the mask
         reach = flood(mask != 0, existing_seed, footprint=footprint)
         mask[reach & (mask == -1)] = 1
 
         reach = flood(mask != 0, candidate_seed, footprint=footprint)
         mask[reach & (mask == -1)] = 2
+
+        # If we didn't fill any, something has gone wrong
+        if n_to_fill == np.sum(mask == -1):
+            raise StitchingError("Failed to fill mask")
 
     return mask
 
