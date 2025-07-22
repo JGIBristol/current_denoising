@@ -578,6 +578,24 @@ def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
     return edges
 
 
+def _merge_patches(
+    existing_patch: np.ndarray, candidate_patch: np.ndarray, seam: list[tuple[int, int]]
+) -> np.ndarray:
+    """
+    Merge the existing patch and candidate patch along a seam.
+
+    :param existing_patch: the existing patch to merge
+    :param candidate_patch: the candidate patch to merge
+    :param seam: the seam, as a list of (y, x) co-ords, to use for merging
+
+    :return: the merged patch
+    """
+    if existing_patch.shape != candidate_patch.shape:
+        raise PatchError(
+            f"Cannot merge patches of different shapes: {existing_patch.shape} and {candidate_patch.shape}"
+        )
+
+
 def add_patch(
     existing_image: np.ndarray, candidate_patch: np.ndarray, position: tuple[int, int]
 ) -> np.ndarray:
