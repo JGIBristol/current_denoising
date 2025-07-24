@@ -80,7 +80,7 @@ def test_patch_size_mismatch():
     patches = [np.ones((2, 2)), np.ones((3, 3))]
 
     with pytest.raises(quilting.PatchError):
-        quilting.quilt(patches, target_size=None, patch_overlap=None, rng=None)
+        quilting.quilt(patches, target_size=None, patch_overlap=None)
 
 
 def test_3d_patches():
@@ -91,7 +91,7 @@ def test_3d_patches():
     patches = [np.ones((2, 2, 2)), np.ones((2, 2, 2))]
 
     with pytest.raises(quilting.PatchError):
-        quilting.quilt(patches, target_size=None, patch_overlap=None, rng=None)
+        quilting.quilt(patches, target_size=None, patch_overlap=None)
 
 
 def test_patch_verification():
@@ -743,3 +743,33 @@ def test_add_patch_diag(unfilled_image):
     actual_array = quilting.add_patch(unfilled_image, patch, position)
 
     np.testing.assert_array_equal(actual_array, expected_array)
+
+
+def test_rotated_patches():
+    """
+    Check we get the right error for non-square patches, and that we get the
+    correct patches
+    """
+    # Check non-2d patches
+    with pytest.raises(quilting.PatchError):
+        quilting._add_rotated_patches([np.arange(8).reshape(2, 2, 2)])
+
+    # Check non-square patches
+    with pytest.raises(quilting.PatchError):
+        quilting._add_rotated_patches([np.arange(6).reshape(2, 3)])
+
+    patches = [np.arange(4).reshape(2, 2)]
+    expected_patches = [
+        np.array([[0, 1], [2, 3]]),
+        np.array([[2, 0], [3, 1]]),
+        np.array([[1, 3], [0, 2]]),
+        np.array([[3, 2], [1, 0]]),
+    ]
+
+    actual_patches = quilting._add_rotated_patches(patches)
+
+    assert len(actual_patches) == 4
+
+    # Weird way to check that the patch exists in our expected list of patches
+    for patch in actual_patches:
+        assert any((patch == expected).all() for expected in expected_patches)

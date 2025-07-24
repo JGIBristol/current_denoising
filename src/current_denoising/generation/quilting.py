@@ -9,7 +9,6 @@ import sys
 import heapq
 import warnings
 from itertools import count
-from typing import Iterable
 
 import numpy as np
 from skimage.segmentation import flood
@@ -100,7 +99,7 @@ def _patch_layout(
     )
 
 
-def _verify_patches(patches: Iterable[np.ndarray]) -> None:
+def _verify_patches(patches: list[np.ndarray]) -> None:
     """
     Perform some basic checks on the patches to ensure they are suitable for quilting.
 
@@ -114,22 +113,21 @@ def _verify_patches(patches: Iterable[np.ndarray]) -> None:
 
 
 def randomly_choose_patches(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     target_size: tuple[int, int],
     patch_overlap: int,
-    allow_rotation: bool = False,
     *,
     rng: np.random.Generator,
 ) -> list[list[np.ndarray]]:
     """
     Randomly choose patches that will at least fill the target size when stitched together.
 
-    Chooses patches with replacement.
+    Chooses patches with replacement. The first patch in the list will be placed in the top-left
+    corner, and the rest of the patches will be chosen randomly from the list.
 
     :param patches: the patches to choose from
     :param target_size: the size of the desired quilt of patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
-    :param allow_rotation: whether to allow patches to be rotated when matching them
     :param rng: a random number generator
 
     :raises PatchSizeMismatchError: if the patches are not all the same size or they are not all 2d
@@ -137,25 +135,23 @@ def randomly_choose_patches(
              Note that after stitching, the resulting array may be larger than the target size.
 
     """
-    if allow_rotation:
-        raise NotImplementedError(
-            "Randomly choosing patches with rotation is not yet implemented"
-        )
-
     _verify_patches(patches)
     n_col, n_row = _patch_layout(target_size, patches[0].shape, patch_overlap)
 
     out_list = [[None for _ in range(n_col)] for _ in range(n_row)]
 
+    out_list[0][0] = patches[0]
+
     for i in range(n_row):
         for j in range(n_col):
-            out_list[i][j] = rng.choice(patches)
+            if i or j:
+                out_list[i][j] = rng.choice(patches)
 
     return out_list
 
 
 def _get_best_patch(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     comparison_patch: np.ndarray,
     patch_slice: tuple[slice, slice],
     n_uses: list[int],
@@ -186,7 +182,7 @@ def _get_best_patch(
 
 
 def _best_patch_compare_left(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     comparison_patch: np.ndarray,
     patch_overlap: int,
     n_uses: list,
@@ -209,7 +205,7 @@ def _best_patch_compare_left(
 
 
 def _best_patch_compare_top(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     comparison_patch: np.ndarray,
     patch_overlap: int,
     n_uses: list[int],
@@ -229,7 +225,7 @@ def _best_patch_compare_top(
 
 
 def _best_patch_compare_top_left(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     left_comparison_patch: np.ndarray,
     top_comparison_patch: np.ndarray,
     patch_overlap: int,
@@ -267,19 +263,17 @@ def _best_patch_compare_top_left(
 
 
 def optimally_choose_patches(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     target_size: tuple[int, int],
     patch_overlap: int,
-    allow_rotation: bool = False,
     *,
-    rng: np.random.Generator,
     repeat_penalty: float = 0.0,
 ) -> list[list[np.ndarray]]:
     """
     Choose patches that will at least fill the target size when stitched together, such that the overlap
     between patches is optimal.
 
-    Chooses the first patch randomly, then builds up the first row by matching the left edge of each patch
+    The first patch is placed in the top left, then builds up the first row by matching the left edge of each patch
     to the right edge of the previous patch.
     The first patch in subsequent rows are chosen according to its match with the bottom edge of the first patch,
     then the rest of the patches in the row are chosen by matching the top and left edges of the patches.
@@ -290,19 +284,12 @@ def optimally_choose_patches(
     :param patches: the patches to choose from
     :param target_size: the size of the desired quilt of patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
-    :param allow_rotation: whether to allow patches to be rotated when matching them
-    :param rng: a random number generator, used to choose the first patch
     :param repeat_penalty: a penalty for using the same patch multiple times, to encourage diversity in the patches used
 
     :return: patches that will at least fill the target size when stitched together.
              Note that after stitching, the resulting array may be larger than the target size.
 
     """
-    if allow_rotation:
-        raise NotImplementedError(
-            "Randomly choosing patches with rotation is not yet implemented"
-        )
-
     if patch_overlap == 0:
         raise PatchError(
             "Patch overlap must be non-zero; if you want no overlap, use `randomly_choose_patches`"
@@ -331,10 +318,9 @@ def optimally_choose_patches(
 
     out_list = [[None for _ in range(n_col)] for _ in range(n_row)]
 
-    # Choose the first patch randomly
-    first_patch_index = rng.choice(len(patches))
-    n_uses[first_patch_index] += 1
-    out_list[0][0] = patches[first_patch_index]
+    # The first patch is placed in the top left corner
+    n_uses[0] += 1
+    out_list[0][0] = patches[0]
 
     # Choose the first row by matching the left edge of each patch to the right edge of the previous patch
     for i in range(1, n_col):
@@ -842,25 +828,50 @@ def naive_quilt(
     return result / counts
 
 
+def _add_rotated_patches(patches: list[np.ndarray]) -> list[np.ndarray]:
+    """
+    Returns a list of patches comprised of the original patches and their rotations.
+
+    """
+    if not all(len(patches.shape) == 2 for patches in patches):
+        raise PatchError("All patches must be 2d arrays")
+    if not all(patch.shape == patches[0].shape for patch in patches):
+        raise PatchSizeMismatchError(
+            f"All patches must be the same size, got {{p.shape for p in patches}}"
+        )
+    if not all(patch.shape[0] == patch.shape[1] for patch in patches):
+        raise PatchError(f"All patches must be square; got {patches[0].shape}")
+
+    rotated_patches = []
+    for patch in patches:
+        # Add the original patch and the four rotations
+        rotated_patches += [patch, *(np.rot90(patch, k=i) for i in range(1, 4))]
+    return rotated_patches
+
+
 def quilt(
-    patches: Iterable[np.ndarray],
+    patches: list[np.ndarray],
     *,
     target_size: tuple[int, int],
     patch_overlap: int,
-    rng: np.random.Generator,
     repeat_penalty: float = 0.0,
+    allow_rotation: bool = False,
 ) -> np.ndarray:
     """
     Quilt together a collection of patches to give an array of the provided size.
 
-    Chooses patches from `patches` randomly (with replacement), stitching them together until
-    the desired `target_size` is reached.
-    Uses the quilting algorithm in [1] to choose which patches should be aligned next to each other
-    and the optimal cut through each patch.
+    The first patch in the list will be placed in the top-left corner of the resulting array,
+    and the rest will be chosen according to the optimal overlap (possibly penalised for repeatedly
+    choosing the same patch according to `repeat_penalty`).
+    Then the patches will be stitched together according to the optimal seam through the overlap region
+    with its neighbouring patches.
 
-    :param patches: the patches to stitch together
+    :param patches: the patches to stitch together. The first patch in this iterable will be placed in the
+                    top-left corner of the resulting array
     :param target_size: the size of the desired quilt of patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
+    :param repeat_penalty: a penalty for using the same patch multiple times, to encourage diversity in the patches used
+    :param allow_rotation: whether to allow patches to be rotated when matching them. Patches must be square, in this case
 
     :raises UserWarning: if the provided target_size, patch size and overlap
     :raises ValueError: if the patches are not all the same size or if they are not 2d
@@ -878,16 +889,20 @@ def quilt(
     if len(patch_size) != 2:
         raise PatchError(f"Patches must be 2d, not {patch_size}")
 
-    # Find how many patches we need to build up to the target size
-    n_col, n_row = _patch_layout(target_size, patch_size, patch_overlap)
+    # Possibly augment the set of patches with their rotations
+    if allow_rotation:
+        patches = _add_rotated_patches(patches)
+
+    # Choose which patches we will stitch together
     patch_grid = optimally_choose_patches(
         patches,
         target_size,
         patch_overlap,
-        rng=rng,
         repeat_penalty=repeat_penalty,
     )
 
+    # Find how many patches we need to build up to the target size
+    n_col, n_row = _patch_layout(target_size, patch_size, patch_overlap)
     # TODO warn if the patches are larger than the target - we'll need to crop
 
     # Init an array of the right size ()
