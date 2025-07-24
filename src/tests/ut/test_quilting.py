@@ -80,7 +80,7 @@ def test_patch_size_mismatch():
     patches = [np.ones((2, 2)), np.ones((3, 3))]
 
     with pytest.raises(quilting.PatchError):
-        quilting.quilt(patches, target_size=None, patch_overlap=None)
+        quilting.quilt(patches, target_size=None, patch_overlap=None, rng=None)
 
 
 def test_3d_patches():
@@ -91,7 +91,7 @@ def test_3d_patches():
     patches = [np.ones((2, 2, 2)), np.ones((2, 2, 2))]
 
     with pytest.raises(quilting.PatchError):
-        quilting.quilt(patches, target_size=None, patch_overlap=None)
+        quilting.quilt(patches, target_size=None, patch_overlap=None, rng=None)
 
 
 def test_patch_verification():
