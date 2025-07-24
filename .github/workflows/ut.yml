@@ -1,0 +1,21 @@
+name: Unit Tests
+on:
+  push:
+    branches:
+      - main
+      - ci
+    
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: UT
+        run: uv run pytest src/tests/ut/
