@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - ci
+      - faster_tests
     
 jobs:
   scripts:
@@ -18,4 +18,7 @@ jobs:
           version: "latest"
 
       - name: UT
-        run: uv run pytest src/tests/ut/
+        run: |
+          uv sync --only-group test
+          uv pip install -e .
+          uv run --only-group test pytest src/tests/ut/

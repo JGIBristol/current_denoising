@@ -424,48 +424,53 @@ wheels = [
 name = "current-denoising"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
+
+[package.dev-dependencies]
+core = [
+    { name = "ipykernel" },
+    { name = "jupyter" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pylint" },
-    { name = "pytest" },
-    { name = "scikit-image" },
     { name = "scikit-learn" },
     { name = "torch" },
     { name = "torcheval" },
     { name = "torchvision" },
     { name = "tqdm" },
-    { name = "yamlmagic" },
 ]
-
-[package.dev-dependencies]
 dev = [
     { name = "black" },
-    { name = "ipykernel" },
-    { name = "jupyter" },
+    { name = "pylint" },
+]
+test = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pytest" },
+    { name = "scikit-image" },
 ]
 
 [package.metadata]
-requires-dist = [
+
+[package.metadata.requires-dev]
+core = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "jupyter", specifier = ">=1.1.1" },
     { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "numpy", specifier = ">=2.2.6" },
-    { name = "pylint", specifier = ">=3.3.7" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "scikit-learn", specifier = ">=1.7.0" },
     { name = "torch", specifier = ">=2.7.1" },
     { name = "torcheval", specifier = ">=0.0.7" },
     { name = "torchvision", specifier = ">=0.22.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
-    { name = "yamlmagic", specifier = ">=0.2.0" },
 ]
-
-[package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=25.1.0" },
-    { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "pylint", specifier = ">=3.3.7" },
+]
+test = [
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "scikit-image", specifier = ">=0.25.2" },
 ]
 
 [[package]]
@@ -2937,13 +2942,4 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/41/53/2e0253c5efd69c9656b1843892052a31c36d37ad42812b5da45c62191f7e/widgetsnbextension-4.0.14.tar.gz", hash = "sha256:a3629b04e3edb893212df862038c7232f62973373869db5084aed739b437b5af", size = 1097428, upload-time = "2025-04-10T13:01:25.628Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl", hash = "sha256:4875a9eaf72fbf5079dc372a51a9f268fc38d46f767cbf85c43a36da5cb9b575", size = 2196503, upload-time = "2025-04-10T13:01:23.086Z" },
-]
-
-[[package]]
-name = "yamlmagic"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/19/79/6f0f00b6ff87bb9c2a1227adef728293770c8161e8141101b8faf8b4e344/yamlmagic-0.2.0.tar.gz", hash = "sha256:c9a64977dd3f379530127a74a35dfc5b1a5ac82efb9a36d87a182d0c650a7205", size = 6968, upload-time = "2015-08-15T22:27:09.479Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/db/d677d565b9048b9003ae6aac3ec34cce9dcc0e9c13bd68289c7c8dde3959/yamlmagic-0.2.0-py2.py3-none-any.whl", hash = "sha256:a2d405f613b3bdd8004355cb242092a840f2a24a26db1cdbcc867e2004a80d03", size = 5501, upload-time = "2015-08-15T22:27:26.385Z" },
 ]
