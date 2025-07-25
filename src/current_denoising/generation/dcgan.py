@@ -7,6 +7,8 @@ from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm
 import torchvision.utils as vutils
+from torchvision.models import resnet18
+from torcheval.metrics import FrechetInceptionDistance
 
 
 class Generator(torch.nn.Module):
@@ -119,11 +121,25 @@ def _gradient_penalty(D, real_samples, fake_samples) -> torch.Tensor:
     return gradient_penalty
 
 
+def _to_rgb(images: torch.Tensor) -> torch.Tensor:
+    return images.repeat(1, 3, 1, 1)
+
+
 def train(
     generator: Generator, discriminator: Discriminator, config: dict
-) -> tuple[Generator, Discriminator, list[list[float]], list[list[float]]]:
+) -> tuple[Generator, Discriminator, list[list[float]], list[list[float]], list[float]]:
     """
-    Train
+    Train the GAN
+
+    :param generator: generates images
+    :param discriminator: classifies images as real or fake
+    :param config: configuration dictionary - see `gan.ipynb` for what it should contain
+
+    :return: trained generator
+    :return: trained discriminator
+    :return: list of generator losses per epoch
+    :return: list of discriminator losses per epoch
+    :return: fid scores
     """
     generator.cuda()
     discriminator.cuda()
@@ -134,6 +150,12 @@ def train(
     optimizer_d = torch.optim.RMSprop(
         discriminator.parameters(), lr=config["learning_rate"]
     )
+
+    # We'll be tracking training using the FID score
+    fid_model = resnet18(pretrained=True)
+    fid_model.to("cuda")
+    fid_metric = FrechetInceptionDistance(feature_dim=1000, model=fid_model, device="cuda")
+    fid_scores = []
 
     gen_losses = []
     disc_losses = []
@@ -206,7 +228,6 @@ def train(
 
             # Rescale from [-1, 1] to [0, 1]
             gen_imgs_g = (gen_imgs_g + 1) / 2
-
             vutils.save_image(
                 gen_imgs_g.data,
                 out_dir / "fake_images.png",
@@ -214,4 +235,33 @@ def train(
                 nrow=int(np.sqrt(config["batch_size"])),
             )
 
-    return generator, discriminator, gen_losses, disc_losses
+            # FID
+            fid_metric.reset()
+            generator.eval()
+            with torch.no_grad():
+                for _ in range(16):
+                    # Generate some images
+                    z = Variable(
+                        torch.cuda.FloatTensor(
+                            np.random.normal(
+                                0, 1, (config["batch_size"], config["latent_dim"])
+                            )
+                        )
+                    )
+                    gen_imgs_g = generator(z)
+                    gen_imgs_g = (gen_imgs_g + 1) / 2
+                    gen_imgs_g = _to_rgb(gen_imgs_g).cuda().float()
+
+                    # Get some real images
+                    real_imgs = next(iter(config["dataloader"])).cuda()
+                    real_imgs = (real_imgs + 1) / 2
+                    real_imgs = _to_rgb(real_imgs).cuda().float()
+
+                    # Evaluate the FID
+                    fid_metric.update(gen_imgs_g, is_real=False)
+                    fid_metric.update(real_imgs, is_real=True)
+
+            fid_scores.append(fid_metric.compute().item())
+            generator.train()
+
+    return generator, discriminator, gen_losses, disc_losses, fid_scores

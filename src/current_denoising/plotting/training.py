@@ -8,7 +8,10 @@ import matplotlib.pyplot as plt
 
 
 def plot_losses(
-    train_losses: list[list[float]], val_losses: list[list[float]]
+    loss1: list[list[float]],
+    loss2: list[list[float]],
+    labels=("Train", "Validation"),
+    axis=None,
 ) -> matplotlib.figure.Figure:
     """
     Plot the training and validation losses against epoch
@@ -16,31 +19,35 @@ def plot_losses(
     :param train_losses: list of lists of floats, the training losses for each epoch
 
     """
-    assert len(train_losses) == len(val_losses)
+    assert len(loss1) == len(loss2)
 
-    epochs = np.arange(len(train_losses))
+    label1, label2 = labels
 
-    train_loss = np.array([np.mean(epoch_loss) for epoch_loss in train_losses])
-    val_loss = np.array([np.mean(epoch_loss) for epoch_loss in val_losses])
+    epochs = np.arange(len(loss1))
 
-    fig, axis = plt.subplots()
+    loss1 = np.array([np.mean(epoch_loss) for epoch_loss in loss1])
+    loss2 = np.array([np.mean(epoch_loss) for epoch_loss in loss2])
 
-    axis.plot(epochs, train_loss, label="Train")
+    if axis is None:
+        fig, axis = plt.subplots()
+    else:
+        fig = axis.get_figure()
+
+    axis.plot(epochs, loss1, label=label1, color="C0")
+    axis.plot(epochs, loss2, label=label2, color="C1")
 
     # Find quartiles - the mean might be outside this, which would be interesting wouldn't it
-    train_loss_upper = [np.percentile(epoch_loss, 75) for epoch_loss in train_losses]
-    train_loss_lower = [np.percentile(epoch_loss, 25) for epoch_loss in train_losses]
-    axis.fill_between(epochs, train_loss_lower, train_loss_upper, alpha=0.5, color="C0")
+    loss1_upper = [np.percentile(epoch_loss, 75) for epoch_loss in loss1]
+    loss1_lower = [np.percentile(epoch_loss, 25) for epoch_loss in loss1]
 
-    axis.plot(epochs, val_loss, label="Validation")
+    loss2_upper = [np.percentile(epoch_loss, 75) for epoch_loss in loss2]
+    loss2_lower = [np.percentile(epoch_loss, 25) for epoch_loss in loss2]
 
-    val_loss_upper = [np.percentile(epoch_loss, 75) for epoch_loss in val_losses]
-    val_loss_lower = [np.percentile(epoch_loss, 25) for epoch_loss in val_losses]
-    axis.fill_between(epochs, val_loss_lower, val_loss_upper, alpha=0.5, color="C1")
+    axis.fill_between(epochs, loss2_lower, loss2_upper, alpha=0.5, color="C1")
+    axis.fill_between(epochs, loss1_lower, loss1_upper, alpha=0.5, color="C0")
 
     axis.set_title("Loss")
     axis.set_xlabel("Epoch")
     axis.legend()
 
-    fig.tight_layout()
     return fig
