@@ -19,10 +19,12 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
     :param path: location of the .dat file; current data is located in
                  data/projects/SING/richard_stuff/Table2/currents/ on the RDSF
     :returns: a numpy array holding current speed
-    :raises ValueE
+    :raises IOError: if the file is malformed
     """
-    dtype = np.dtype("<f4")
-    shape = 720, 1440
+    dtype = np.dtype(
+        "=f4"
+    )  # Not sure about the endianness, but it doesn't seem to matter...
+    shape = 720, 1440  # Assuming a quarter degree grid
 
     type_size = np.dtype(dtype).itemsize
 
@@ -118,12 +120,12 @@ def _tile(input_img: np.ndarray, start: tuple[int, int], size: int) -> np.ndarra
 
 def _tile_rms(tile: np.ndarray) -> float:
     """
-    Calculate the RMS of a tile
+    Calculate the RMS of a tile, ignoring NaNs
 
     :param tile: the input tile
     :returns: the RMS of the tile
     """
-    return np.sqrt(np.mean(tile**2))
+    return np.sqrt(np.nanmean(tile**2))
 
 
 def extract_tiles(
@@ -134,6 +136,8 @@ def extract_tiles(
     max_rms: float,
     max_latitude: float = 64.0,
     tile_size: int = 32,
+    allow_nan: bool = False,
+    return_indices: bool = False,
 ) -> np.ndarray:
     """
     Randomly extract tiles from an input image.
@@ -148,8 +152,11 @@ def extract_tiles(
     :param max_rms: Maximum allowed RMS value in a tile
     :param max_latitude: The maximum latitude for the tiles;
                          will exclude tiles which extend above/below this latitude N/S.
+    :param allow_nan: Whether to allow the tiles to contain NaN (probably land) pixels.
+    :param return_indices: whether to also return the location of each tile
 
     :returns: A numpy array containing the extracted tiles.
+    :returns: if `return_indices`, returns the location of each tile as well
     :raises IOError: if the input image is not 2d
     :raises IOError: if the input image is smaller than the tile size
     """
@@ -166,6 +173,7 @@ def extract_tiles(
 
     tiles = np.empty((num_tiles, tile_size, tile_size), dtype=input_img.dtype)
     indices_found = 0
+    indices = []
     while indices_found < num_tiles:
         y, x = _tile_index(
             rng,
@@ -181,9 +189,17 @@ def extract_tiles(
                 f"Extracted tile has wrong shape {tile.shape}, expected {(tile_size, tile_size)}"
             )
 
+        if not allow_nan and np.isnan(tile).any():
+            continue
+
         # Check the RMS of the tile
         if _tile_rms(tile) < max_rms:
             tiles[indices_found] = tile
             indices_found += 1
 
+            if return_indices:
+                indices.append((y, x))
+
+    if return_indices:
+        return tiles, indices
     return tiles
