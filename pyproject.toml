@@ -8,6 +8,9 @@ authors = [
 ]
 
 requires-python = ">=3.10"
+dependencies = [
+    "nbdime>=4.0.2",
+]
 
 [tool.uv]
 default-groups = ["core", "test"]
