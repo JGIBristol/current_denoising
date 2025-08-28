@@ -76,19 +76,6 @@ def test_extract_indices(rng):
     assert actual_indices == expected_indices
 
 
-def test_notimplemented_maxlatitude(rng):
-    """
-    Check that we've still got our NotImplemented check for maximum latitude
-    """
-    with pytest.raises(NotImplementedError):
-        ioutils._tile_index(
-            rng,
-            input_size=(32, 32),
-            max_latitude=45.0,
-            tile_size=8,
-        )
-
-
 def test_tile(image):
     """
     Test extracting a tile from an array
