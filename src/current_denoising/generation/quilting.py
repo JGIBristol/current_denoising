@@ -779,7 +779,10 @@ def naive_quilt(
     """
     Join the patches together using a naive averaging in the overlap.
 
-    :param patches: the patches to join together
+
+    :param patches: the patches to join together, as a list of lists of images.
+                    This is a convenient form to put the input data into if e.g. it is from a larger
+                    image that has been broken into non-overlapping patches
     :param patch_overlap: how much patches should overlap when building up the quilt (in pixels)
 
     :raises PatchError: if patches is a ragged array or if the patches are not all the same size

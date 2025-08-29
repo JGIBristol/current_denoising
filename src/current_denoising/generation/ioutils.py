@@ -14,7 +14,9 @@ class IOError(Exception):
 def read_currents(path: pathlib.Path) -> np.ndarray:
     """
     Read a .dat file holding current data and return a 720x1440 shaped numpy array giving
-    the current in m/s (I think)
+    the current in m/s (I think).
+    Sets grid points with a value of exactly 0 to nan, since this is a flag for a grid point
+    over land.
 
     :param path: location of the .dat file; current data is located in
                  data/projects/SING/richard_stuff/Table2/currents/ on the RDSF
@@ -35,6 +37,8 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
         closing_record_len = np.fromfile(f, dtype=np.int32, count=1)[0]
         if closing_record_len != first_record_len:
             raise IOError("Close marker does not match the opener.")
+
+    data[data == 0] = np.nan
 
     return data.reshape(shape)
 
