@@ -14,7 +14,7 @@ def test_grid_latlong():
     lat, long = maps.lat_long_grid((720, 1440))
 
     a = 90 - 1 / 8
-    np.testing.assert_array_equal(lat, np.linspace(a, -a, 720))
+    np.testing.assert_array_equal(lat, np.linspace(-a, a, 720))
 
     b = 180 - 1 / 8
     np.testing.assert_array_equal(long, np.linspace(-b, b, 1440))
@@ -27,7 +27,7 @@ def test_twelfth_degree_latlong():
     lat, long = maps.lat_long_grid((2160, 4320))
 
     a = 90 - 1 / 24
-    np.testing.assert_array_equal(lat, np.linspace(a, -a, 2160))
+    np.testing.assert_array_equal(lat, np.linspace(-a, a, 2160))
 
     b = 180 - 1 / 24
     np.testing.assert_array_equal(long, np.linspace(-b, b, 4320))

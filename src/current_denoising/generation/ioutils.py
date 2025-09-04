@@ -40,7 +40,7 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
 
     data[data == 0] = np.nan
 
-    return data.reshape(shape)
+    return np.flipud(data.reshape(shape))
 
 
 def _included_indices(

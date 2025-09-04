@@ -24,7 +24,7 @@ def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     long_point_size = 360.0 / width
 
     return np.linspace(
-        90 - lat_point_size / 2, -90 + lat_point_size / 2, height, endpoint=True
+        -90 + lat_point_size / 2, 90 - lat_point_size / 2, height, endpoint=True
     ), np.linspace(
         -180 + long_point_size / 2, 180 - long_point_size / 2, width, endpoint=True
     )
