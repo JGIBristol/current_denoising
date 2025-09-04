@@ -773,3 +773,28 @@ def test_rotated_patches():
     # Weird way to check that the patch exists in our expected list of patches
     for patch in actual_patches:
         assert any((patch == expected).all() for expected in expected_patches)
+
+
+def test_quilt_too_large():
+    """
+    Check that we can detect it when the actual size is bigger than what we wanted
+    """
+    # Quilt is too large
+    assert quilting._quilt_too_large((3, 3), (10, 10))
+    assert quilting._quilt_too_large((3, 3), (3, 10))
+    assert quilting._quilt_too_large((3, 3), (10, 3))
+
+    # Quilt fits exactly
+    assert not quilting._quilt_too_large((10, 10), (10, 10))
+
+    # Quilt is smaller than requested
+    with pytest.raises(quilting.PatchError):
+        quilting._quilt_too_large((10, 10), (9, 9))
+    with pytest.raises(quilting.PatchError):
+        quilting._quilt_too_large((10, 10), (10, 9))
+    with pytest.raises(quilting.PatchError):
+        quilting._quilt_too_large((10, 10), (9, 10))
+    with pytest.raises(quilting.PatchError):
+        quilting._quilt_too_large((10, 10), (11, 9))
+    with pytest.raises(quilting.PatchError):
+        quilting._quilt_too_large((10, 10), (9, 11))

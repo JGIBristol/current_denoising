@@ -446,6 +446,7 @@ dev = [
     { name = "pylint" },
 ]
 test = [
+    { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
@@ -472,6 +473,7 @@ dev = [
     { name = "pylint", specifier = ">=3.3.7" },
 ]
 test = [
+    { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "scikit-image", specifier = ">=0.25.2" },

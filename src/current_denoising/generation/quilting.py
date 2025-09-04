@@ -852,6 +852,18 @@ def _add_rotated_patches(patches: list[np.ndarray]) -> list[np.ndarray]:
     return rotated_patches
 
 
+def _quilt_too_large(target_size: tuple[int, int], quilt_size: tuple[int, int]) -> bool:
+    """
+    The quilt might be larger than we wanted
+    """
+    if any(a < b for a, b in zip(quilt_size, target_size)):
+        raise PatchError(
+            f"Quilt size {quilt_size} smaller than target size {target_size}"
+        )
+
+    return any(a > b for a, b in zip(quilt_size, target_size))
+
+
 def quilt(
     patches: list[np.ndarray],
     *,
@@ -906,7 +918,6 @@ def quilt(
 
     # Find how many patches we need to build up to the target size
     n_col, n_row = _patch_layout(target_size, patch_size, patch_overlap)
-    # TODO warn if the patches are larger than the target - we'll need to crop
 
     # Init an array of the right size ()
     array_size = (
@@ -928,6 +939,8 @@ def quilt(
 
             result = add_patch(result, patch_grid[i][j], (pos_y, pos_x))
 
-    # Check that the quilt is the right size
+    # Crop if required
+    if _quilt_too_large(target_size, result.shape):
+        result = result[:target_size[0], :target_size[1]]
 
     return result
