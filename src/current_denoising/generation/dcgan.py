@@ -154,7 +154,9 @@ def train(
     # We'll be tracking training using the FID score
     fid_model = resnet18(pretrained=True)
     fid_model.to("cuda")
-    fid_metric = FrechetInceptionDistance(feature_dim=1000, model=fid_model, device="cuda")
+    fid_metric = FrechetInceptionDistance(
+        feature_dim=1000, model=fid_model, device="cuda"
+    )
     fid_scores = []
 
     gen_losses = []
