@@ -82,7 +82,7 @@ def test_get_tile_out_of_bounds(sample_grid: np.ndarray):
         maps.get_tile(sample_grid, (0, -190), size)
 
 
-def test_get_tile_equal():
+def test_get_tile_equal(sample_grid: np.ndarray):
     """
     Check we get the right grid point if we're equidistant between two.
     """
@@ -93,6 +93,41 @@ def test_get_tile_equal():
             [np.nan, 38, 39],
             [73, np.nan, 75],
             [109, 110, np.nan],
+        ]
+    )
+    np.testing.assert_array_equal(tile, expected)
+
+
+def test_get_tile_edge(sample_grid: np.ndarray):
+    """
+    Check we can get a tile that starts at the edge of the grid.
+    """
+    tile = maps.get_tile(sample_grid, (90, -180), 3)
+    expected = np.array(
+        [
+            [np.nan, 1, 2],
+            [36, np.nan, 38],
+            [72, 73, np.nan],
+        ]
+    )
+    np.testing.assert_array_equal(tile, expected)
+
+    tile = maps.get_tile(sample_grid, (75, -180), 3)
+    expected = np.array(
+        [
+            [36, np.nan, 38],
+            [72, 73, np.nan],
+            [108, 109, 110],
+        ]
+    )
+    np.testing.assert_array_equal(tile, expected)
+
+    tile = maps.get_tile(sample_grid, (90, -165), 3)
+    expected = np.array(
+        [
+            [np.nan, 38, 39],
+            [73, np.nan, 75],
+            [109, 110, 111],
         ]
     )
     np.testing.assert_array_equal(tile, expected)
