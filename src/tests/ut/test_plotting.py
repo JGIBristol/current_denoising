@@ -53,7 +53,8 @@ def test_get_tile(sample_grid: np.ndarray):
     expected = np.array(
         [
             [np.nan, 38, 39],
-            [73, np.nan, 75][109, 110, np.nan],
+            [73, np.nan, 75],
+            [109, 110, np.nan],
         ]
     )
     np.testing.assert_array_equal(tile, expected)
@@ -90,7 +91,8 @@ def test_get_tile_equal():
     expected = np.array(
         [
             [np.nan, 38, 39],
-            [73, np.nan, 75][109, 110, np.nan],
+            [73, np.nan, 75],
+            [109, 110, np.nan],
         ]
     )
     np.testing.assert_array_equal(tile, expected)
