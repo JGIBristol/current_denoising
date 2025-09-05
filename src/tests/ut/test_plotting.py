@@ -48,7 +48,7 @@ def test_get_tile(sample_grid: np.ndarray):
     """
     Check we can get the right tile from a grid.
     """
-    tile = maps.get_tile(sample_grid, (-165, 75), 3)
+    tile = maps.get_tile(sample_grid, (75, -165), 3)
 
     expected = np.array(
         [
@@ -86,7 +86,7 @@ def test_get_tile_equal():
     """
     Check we get the right grid point if we're equidistant between two.
     """
-    tile = maps.get_tile(sample_grid, (-160, 70), 3)
+    tile = maps.get_tile(sample_grid, (70, -160), 3)
 
     expected = np.array(
         [

@@ -52,6 +52,9 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
 
     :returns: the tile as a view into `grid`.
     """
+    lat, long = co_ords
+    if abs(lat) > 90 or abs(long) > 180:
+        raise LatLongError(f"Requested lat/long {co_ords} is out of range (+-90, +-180)")
 
 
 def imshow(
