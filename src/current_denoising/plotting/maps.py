@@ -2,6 +2,8 @@
 Utilities for plotting maps of things
 """
 
+import functools
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,6 +12,7 @@ class LatLongError(Exception):
     """General exception for latitude/longitude calculation errors"""
 
 
+@functools.cache
 def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate latitude and longitude arrays for an image of the provided shape
@@ -54,7 +57,9 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
     """
     lat, long = co_ords
     if abs(lat) > 90 or abs(long) > 180:
-        raise LatLongError(f"Requested lat/long {co_ords} is out of range (+-90, +-180)")
+        raise LatLongError(
+            f"Requested lat/long {co_ords} is out of range (+-90, +-180)"
+        )
 
 
 def imshow(
