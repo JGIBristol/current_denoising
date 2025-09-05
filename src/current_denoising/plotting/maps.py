@@ -56,12 +56,13 @@ def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
 
 def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.ndarray:
     """
-    Extract a tile from a grid, given its location and size.
+    Extract a tile from a square grid, given its location and size.
 
     The tile will start at the closest grid point to the provided coordinates;
     if two points are equally close, it will choose the northernmost/westernmost point.
 
-    :param grid: The input grid from which to extract the tile.
+    :param grid: The input grid from which to extract the tile. Must be a square grid; i.e.
+                 the spacing in latitude and longitude must be the same.
     :param co_ords: A tuple of (lat, long) for the top-left corner of the tile.
                     Must be in ([-90, 90], [-180, 180]).
                     Requesting a lat/long right on the edge (e.g. 90 or -180) will return
@@ -71,6 +72,18 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
 
     :returns: the tile as a view into `grid`.
     """
+    lat_point_size, long_point_size = _grid_point_size(*grid.shape)
+    if lat_point_size != long_point_size:
+        raise LatLongError(
+            f"Grid points are not square: {lat_point_size} x {long_point_size} deg"
+        )
+
+    if (tile_size % lat_point_size) or (tile_size % long_point_size):
+        raise LatLongError(
+            f"Tile size {tile_size} is not a multiple of grid point size "
+            f"({lat_point_size}, {long_point_size}) for grid shape {grid.shape}"
+        )
+
     lat, long = co_ords
     if abs(lat) > 90 or abs(long) > 180:
         raise LatLongError(
@@ -83,13 +96,11 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
     long_idx = int(np.argmin(np.abs(longs - long)))
 
     # Convert tile size in degrees to number of grid points
+    extent = int(tile_size / lat_point_size)
 
-    tile = ioutils._tile(grid, (lat_idx, long_idx), tile_size)
+    tile = ioutils._tile(grid, (lat_idx, long_idx), extent)
 
-    assert tile.shape == (
-        tile_size,
-        tile_size,
-    ), (
+    assert tile.shape == (extent, extent), (
         f"Tile shape {tile.shape} is not as expected {(tile_size, tile_size)}\n"
         f"Out of bounds for grid shape {grid.shape}, co_ords {co_ords}?"
         f" (got index {lat_idx, long_idx})"

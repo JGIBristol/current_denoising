@@ -48,7 +48,7 @@ def test_get_tile(sample_grid: np.ndarray):
     """
     Check we can get the right tile from a grid.
     """
-    tile = maps.get_tile(sample_grid, (75, -165), 3)
+    tile = maps.get_tile(sample_grid, (75, -165), 30)
 
     expected = np.array(
         [
@@ -64,7 +64,7 @@ def test_get_tile_out_of_bounds(sample_grid: np.ndarray):
     """
     Check we get an error if we try to get a tile that doesn't fit in the grid.
     """
-    size = 3
+    size = 30
     with pytest.raises(maps.LatLongError):
         maps.get_tile(sample_grid, (100, 0), size)
     with pytest.raises(maps.LatLongError):
@@ -86,7 +86,7 @@ def test_get_tile_equal(sample_grid: np.ndarray):
     """
     Check we get the right grid point if we're equidistant between two.
     """
-    tile = maps.get_tile(sample_grid, (70, -160), 3)
+    tile = maps.get_tile(sample_grid, (70, -160), 30)
 
     expected = np.array(
         [
@@ -102,7 +102,7 @@ def test_get_tile_edge(sample_grid: np.ndarray):
     """
     Check we can get a tile that starts at the edge of the grid.
     """
-    tile = maps.get_tile(sample_grid, (90, -180), 3)
+    tile = maps.get_tile(sample_grid, (90, -180), 30)
     expected = np.array(
         [
             [np.nan, 1, 2],
@@ -112,7 +112,7 @@ def test_get_tile_edge(sample_grid: np.ndarray):
     )
     np.testing.assert_array_equal(tile, expected)
 
-    tile = maps.get_tile(sample_grid, (75, -180), 3)
+    tile = maps.get_tile(sample_grid, (75, -180), 30)
     expected = np.array(
         [
             [36, np.nan, 38],
@@ -122,7 +122,7 @@ def test_get_tile_edge(sample_grid: np.ndarray):
     )
     np.testing.assert_array_equal(tile, expected)
 
-    tile = maps.get_tile(sample_grid, (90, -165), 3)
+    tile = maps.get_tile(sample_grid, (90, -165), 30)
     expected = np.array([[1, 2, 3], [np.nan, 38, 39], [73, np.nan, 75]])
     np.testing.assert_array_equal(tile, expected)
 
