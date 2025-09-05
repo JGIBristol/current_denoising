@@ -125,3 +125,12 @@ def test_get_tile_edge(sample_grid: np.ndarray):
     tile = maps.get_tile(sample_grid, (90, -165), 3)
     expected = np.array([[1, 2, 3], [np.nan, 38, 39], [73, np.nan, 75]])
     np.testing.assert_array_equal(tile, expected)
+
+
+def test_not_whole_grid_points(sample_grid: np.ndarray):
+    """
+    Check the right error gets raised if the requested tile size isn't a whole number of grid points.
+    """
+    maps.get_tile(sample_grid, (90, -180), 10)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (90, -180), 15)
