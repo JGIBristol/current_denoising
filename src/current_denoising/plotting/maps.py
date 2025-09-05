@@ -103,7 +103,7 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
     assert tile.shape == (extent, extent), (
         f"Tile shape {tile.shape} is not as expected {(tile_size, tile_size)}\n"
         f"Out of bounds for grid shape {grid.shape}, co_ords {co_ords}?"
-        f" (got index {lat_idx, long_idx})"
+        f" (got index {lat_idx, long_idx}, extent {extent})"
     )
 
     return tile
