@@ -7,6 +7,8 @@ import functools
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ..generation import ioutils
+
 
 class LatLongError(Exception):
     """General exception for latitude/longitude calculation errors"""
@@ -74,6 +76,26 @@ def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.n
         raise LatLongError(
             f"Requested lat/long {co_ords} is out of range (+-90, +-180)"
         )
+
+    lats, longs = lat_long_grid(grid.shape)
+
+    lat_idx = int(np.argmin(np.abs(-lats - lat)))
+    long_idx = int(np.argmin(np.abs(longs - long)))
+
+    # Convert tile size in degrees to number of grid points
+
+    tile = ioutils._tile(grid, (lat_idx, long_idx), tile_size)
+
+    assert tile.shape == (
+        tile_size,
+        tile_size,
+    ), (
+        f"Tile shape {tile.shape} is not as expected {(tile_size, tile_size)}\n"
+        f"Out of bounds for grid shape {grid.shape}, co_ords {co_ords}?"
+        f" (got index {lat_idx, long_idx})"
+    )
+
+    return tile
 
 
 def imshow(

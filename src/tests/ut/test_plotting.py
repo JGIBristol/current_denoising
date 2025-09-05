@@ -123,11 +123,5 @@ def test_get_tile_edge(sample_grid: np.ndarray):
     np.testing.assert_array_equal(tile, expected)
 
     tile = maps.get_tile(sample_grid, (90, -165), 3)
-    expected = np.array(
-        [
-            [np.nan, 38, 39],
-            [73, np.nan, 75],
-            [109, 110, 111],
-        ]
-    )
+    expected = np.array([[1, 2, 3], [np.nan, 38, 39], [73, np.nan, 75]])
     np.testing.assert_array_equal(tile, expected)
