@@ -12,6 +12,21 @@ class LatLongError(Exception):
     """General exception for latitude/longitude calculation errors"""
 
 
+def _grid_point_size(height: int, width: int) -> tuple[float, float]:
+    """
+    Calculate the size of each grid point in degrees, given the shape of the grid.
+
+    :param height: number of grid points in the latitude direction
+    :param width: number of grid points in the longitude direction
+
+    :returns: (lat_point_size, long_point_size)
+    """
+    lat_point_size = 180.0 / height
+    long_point_size = 360.0 / width
+
+    return lat_point_size, long_point_size
+
+
 @functools.cache
 def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -28,8 +43,7 @@ def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     height, width = img_shape
 
     # Find how many degrees each grid point corresponds to
-    lat_point_size = 180.0 / height
-    long_point_size = 360.0 / width
+    lat_point_size, long_point_size = _grid_point_size(height, width)
 
     return np.linspace(
         -90 + lat_point_size / 2, 90 - lat_point_size / 2, height, endpoint=True
