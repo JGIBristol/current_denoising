@@ -2,6 +2,7 @@
 Tests for plotting utilities
 """
 
+import pytest
 import numpy as np
 
 from current_denoising.plotting import maps
@@ -31,3 +32,65 @@ def test_twelfth_degree_latlong():
 
     b = 180 - 1 / 24
     np.testing.assert_array_equal(long, np.linspace(-b, b, 4320))
+
+
+@pytest.fixture
+def sample_grid() -> np.ndarray:
+    """
+    A sample grid for testing
+    """
+    grid = np.arange(648, dtype=float).reshape((18, 36))
+    np.fill_diagonal(grid, np.nan)
+    return grid
+
+
+def test_get_tile(sample_grid: np.ndarray):
+    """
+    Check we can get the right tile from a grid.
+    """
+    tile = maps.get_tile(sample_grid, (-165, 75), 3)
+
+    expected = np.array(
+        [
+            [np.nan, 38, 39],
+            [73, np.nan, 75][109, 110, np.nan],
+        ]
+    )
+    np.testing.assert_array_equal(tile, expected)
+
+
+def test_get_tile_out_of_bounds(sample_grid: np.ndarray):
+    """
+    Check we get an error if we try to get a tile that doesn't fit in the grid.
+    """
+    size = 3
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (100, 0), size)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (-100, 0), size)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (200, 0), size)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (-200, 0), size)
+
+    maps.get_tile(sample_grid, (0, 90), size)
+    maps.get_tile(sample_grid, (0, -90), size)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (0, 190), size)
+    with pytest.raises(maps.LatLongError):
+        maps.get_tile(sample_grid, (0, -190), size)
+
+
+def test_get_tile_equal():
+    """
+    Check we get the right grid point if we're equidistant between two.
+    """
+    tile = maps.get_tile(sample_grid, (-160, 70), 3)
+
+    expected = np.array(
+        [
+            [np.nan, 38, 39],
+            [73, np.nan, 75][109, 110, np.nan],
+        ]
+    )
+    np.testing.assert_array_equal(tile, expected)

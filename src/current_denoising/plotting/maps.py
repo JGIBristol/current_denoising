@@ -6,6 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+class LatLongError(Exception):
+    """General exception for latitude/longitude calculation errors"""
+
+
 def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate latitude and longitude arrays for an image of the provided shape
@@ -29,6 +33,25 @@ def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     ), np.linspace(
         -180 + long_point_size / 2, 180 - long_point_size / 2, width, endpoint=True
     )
+
+
+def get_tile(grid: np.ndarray, co_ords: tuple[int, int], tile_size: int) -> np.ndarray:
+    """
+    Extract a tile from a grid, given its location and size.
+
+    The tile will start at the closest grid point to the provided coordinates;
+    if two points are equally close, it will choose the northernmost/westernmost point.
+
+    :param grid: The input grid from which to extract the tile.
+    :param co_ords: A tuple of (lat, long) for the top-left corner of the tile.
+                    Must be in ([-90, 90], [-180, 180]).
+                    Requesting a lat/long right on the edge (e.g. 90 or -180) will return
+                    the edgemost grid point, which is not at exactly that lat/long - the first
+                    grid point is e.g. at (90 - grid_size/2).
+    :param tile_size: size of the tile in degrees
+
+    :returns: the tile as a view into `grid`.
+    """
 
 
 def imshow(
