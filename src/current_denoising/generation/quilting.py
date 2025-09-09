@@ -150,6 +150,32 @@ def randomly_choose_patches(
     return out_list
 
 
+def _patch_overlap_cost(
+    overlap_region: np.ndarray,
+    comparison_patch: np.ndarray,
+    n_uses: int,
+    repeat_penalty: float,
+) -> float:
+    """
+    Cost function for patch overlap
+
+    Implementation here is slightly wasteful,
+    so it would be possible to speed things up
+    if required in the quilting by optimising a bit.
+    """
+    overlap0 = overlap_region - np.mean(overlap_region)
+    comparison0 = comparison_patch - np.mean(comparison_patch)
+
+    na = float(np.linalg.norm(overlap0))
+    nb = float(np.linalg.norm(comparison0))
+    if na == 0.0 or nb == 0.0:
+        # If both are constant after mean removal, treat as perfect match
+        corr = 1.0 if na == 0.0 and nb == 0.0 else 0.0
+    else:
+        corr = float(np.sum(overlap0 * comparison0) / (na * nb))
+    return (1.0 - corr) * (1.0 + repeat_penalty * n_uses)
+
+
 def _get_best_patch(
     patches: list[np.ndarray],
     comparison_patch: np.ndarray,
@@ -168,11 +194,11 @@ def _get_best_patch(
     best_idx = None
     for i, patch in enumerate(patches):
         overlap_region = patch[patch_slice]
-        mse = np.sum((overlap_region - comparison_patch) ** 2) * (
-            1.0 + repeat_penalty * n_uses[i]
+        cost = _patch_overlap_cost(
+            overlap_region, comparison_patch, n_uses[i], repeat_penalty
         )
-        if mse < score:
-            score = mse
+        if cost < score:
+            score = cost
             best_patch = patch
             best_idx = i
 
@@ -248,12 +274,19 @@ def _best_patch_compare_top_left(
     for i, patch in enumerate(patches):
         left_overlap_region = patch[:, :patch_overlap]
         top_overlap_region = patch[:patch_overlap, :]
-        mse = np.sum((left_overlap_region - left_comparison_patch) ** 2) + np.sum(
-            (top_overlap_region - top_comparison_patch) ** 2
+        cost = _patch_overlap_cost(
+            left_overlap_region,
+            left_comparison_patch,
+            n_uses[i],
+            repeat_penalty,
+        ) + _patch_overlap_cost(
+            top_overlap_region,
+            top_comparison_patch,
+            n_uses[i],
+            repeat_penalty,
         )
-        mse *= 1.0 + repeat_penalty * n_uses[i]
-        if mse < score:
-            score = mse
+        if cost < score:
+            score = cost
             best_patch = patch
             best_idx = i
 
@@ -552,7 +585,7 @@ def _seam_edge(costs: np.ndarray) -> bool:
     return True
 
 
-def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str, str]:
+def _identify_seam_edges(cost_matrix: np.ndarray) -> set[str]:
     """
     Find the edges of the cost matrix that are suitable for finding a seam.
 
@@ -941,6 +974,6 @@ def quilt(
 
     # Crop if required
     if _quilt_too_large(target_size, result.shape):
-        result = result[:target_size[0], :target_size[1]]
+        result = result[: target_size[0], : target_size[1]]
 
     return result
