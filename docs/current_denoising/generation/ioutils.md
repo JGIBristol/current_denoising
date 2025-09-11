@@ -11,10 +11,25 @@ hold the data for many different runs, models, and start years, so the correct o
 specified. This is done with the year/model/name parameters; the name is a special string (e.g.
 r1i1p1f1_gn).
 
-It is assumed that the currents don't change much within 5 years, so we have model outputs at
+They also contain the MDT, not the currents themselves, so we need to convert them
+This isn't too hard; we just convert from the MDT to currents by balancing forces and writing
+down the steady-state equation for geostrophic balance:
+
+$
+    u = -\frac{\gamma }{fR}\frac{\partial \bar{\eta}}{\partial \theta}
+$
+
+$
+    v = -\frac{\gamma }{fR\mathrm{cos}\theta}\frac{\partial \bar{\eta}}{\partial \phi}
+$
+
+It is assumed that the MDT doesn't change much within 5 years, so we have model outputs at
 a granularity of every 5 years. The provided year in the metadata is the start year of the run.
 
-#### r (realization_index)
+### Metadata naming conventions
+A "name" (e.g. *r1i1f1p1*) is provided in the metadata, which conforms to a CMIP convention.
+<details>
+<summary> r (realization_index)</summary>
     an integer (≥1) distinguishing among members of an ensemble of simulations that
     differ only in their initial conditions (e.g., initialized from different points
     in a control run). Note that if two different simulations were started from the
@@ -25,8 +40,10 @@ a granularity of every 5 years. The provided year in the metadata is the start y
     RCP (future scenario) simulation should normally be assigned the same realization
     integer as the historical run from which it was initiated.
     This will allow users to easily splice together the appropriate historical and future runs.
+</details>
 
-#### i (initialization_index)
+<details>
+<summary>i (initialization_index)</summary>
     an integer (≥1), which should be assigned a value of 1 except to distinguish
     simulations performed under the same conditions but with different initialization
     procedures.  In CMIP6 this index should invariably be assigned the value “1”
@@ -34,8 +51,10 @@ a granularity of every 5 years. The provided year in the metadata is the start y
     The initialization_index can be used either to distinguish between different
     algorithms used to impose initial conditions on a forecast or to distinguish
     between different observational datasets used to initialize a forecast.
+</details>
 
-#### p (physics_index)
+<details>
+<summary>p (physics_index)</summary>
     an integer (≥1) identifying the physics version used by the model.  In the
     usual case of a single physics version of a model, this argument should normally
     be assigned the value 1, but it is essential that a consistent assignment of
@@ -45,16 +64,21 @@ a granularity of every 5 years. The provided year in the metadata is the start y
     different parameterizations (e.g., of cloud physics).  Model versions that are
     substantially different from one another should be given a different source_id”
     (rather than simply assigning a different value of the physics_index).
+</details>
 
-#### f (forcing_index)
+<details>
+<summary>f (forcing_index) </summary>
     an integer (≥1) used to distinguish runs conforming to the protocol of a single
     CMIP6 experiment, but with different variants of forcing applied.  One can, for
     example, distinguish between two historical simulations, one forced with the
     CMIP6-recommended forcing data sets and another forced by a different dataset,
     which might yield information about how forcing uncertainty affects the simulation.
+</details>
 
-#### Gridding
+<details>
+<summary> Gridding </summary>
     A grid-label suffix is used to distinguish between the gridding conventions used:
  - grid_label = "gn"  (output is reported on the native grid, usually but not invariably at grid cell centers) 
  - grid_label = "gr"   (output is not reported on the native grid, but instead is regridded by the modeling group to a “primary grid” of its choosing) 
  - grid_label = “gm” (global mean output is reported, so data are not gridded)
+</details>
