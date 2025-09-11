@@ -3,8 +3,12 @@ Input and output utilities
 """
 
 import pathlib
+from functools import cache
 
 import numpy as np
+import pandas as pd
+
+from ..plotting.maps import lat_long_grid
 
 
 class IOError(Exception):
@@ -41,6 +45,166 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
     data[data == 0] = np.nan
 
     return np.flipud(data.reshape(shape))
+
+
+@cache
+def _read_clean_current_metadata(metadata_path: pathlib.Path) -> pd.DataFrame:
+    """
+    Read the metadata file for the clean currents .dat file
+
+    :returns: metadata dataframe; model/name/year
+    """
+    # First line is the number of models/runs
+    with open(metadata_path, "r") as f:
+        num_runs = int(f.readline().strip())
+        df = pd.read_csv(f, names=["model", "name", "year"], sep="\s+")
+
+    if len(df) != num_runs:
+        raise IOError(
+            f"Metadata file {metadata_path} has {len(df)} rows, but first line says {num_runs}"
+        )
+
+    return df
+
+
+def _coriolis_parameter(latitudes: np.ndarray) -> np.ndarray:
+    """
+    Calculate the coriolis parameter at each latitude
+    """
+    omega = 7.2921e-5
+    torad = np.pi / 180.0
+
+    return 2 * omega * np.sin(latitudes * torad)
+
+
+def current_speed_from_mdt(mdt: np.ndarray) -> np.ndarray:
+    """
+    Convert geodetic MDT to currents.
+
+    By assuming geostrophic balance, we can take the gradient of the MDT to get the steady-state
+    currents.
+    This requires us to work out the coriolis parameter at each latitude, and to take the gradient
+    of the MDT.
+
+    :param mdt: the mean dynamic topography, in metres, covering the globe.
+
+    :returns: the current speed in m/s
+
+    """
+    g = 9.80665
+    torad = np.pi / 180.0
+    R = 6_371_229.0
+
+    # Find the grid spacing (in m)
+    lats, longs = lat_long_grid(mdt.shape)
+    dlat = np.abs(lats[1] - lats[0]) * torad * R
+    dlong = (
+        np.abs(longs[1] - longs[0]) * torad * R * np.cos(torad * lats)[:, np.newaxis]
+    )
+
+    # Find the coriolis parameter at each latitude
+    f = _coriolis_parameter(lats)
+
+    # Velocities are gradients * coriolis param for geostrophic balance
+    dmdt_dlat = np.gradient(mdt, axis=0) / dlat
+    dmdt_dlon = np.gradient(mdt, axis=1) / dlong
+
+    # u should be negative, but it doesnt matter for speed
+    u = g / f[:, np.newaxis] * dmdt_dlat
+    v = g / f[:, np.newaxis] * dmdt_dlon
+
+    return np.sqrt(u**2 + v**2)
+
+
+def read_clean_currents(
+    path: pathlib.Path,
+    metadata_path: pathlib.Path,
+    *,
+    year: int,
+    model: str = "ACCESS-CM2",
+    name: str = "r1i1p1f1_gn",
+) -> np.ndarray:
+    """
+    Read clean current data from a .dat file.
+
+    Read a .dat file containing clean current data,
+    given the model/name/year, returning a 720x1440 numpy array giving the current
+    in m/s.
+    Sets land grid points to np.nan.
+    Since the clean current data is stored in a large file containing multiple years and models, we need
+    to choose the correct one.
+
+    Notes on the name convention from the CMIP6 documentation can be found in docs/current_denoising/generation/ioutils.md,
+    or in the original at https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk.
+
+    :param path: location of the .dat file; clean current data is located in
+                 data/projects/SING/richard_stuff/Table2/clean_currents/ on the RDSF
+    :param metadata_path: location of the metadata .csv file describing the contents of the .dat file
+    :param year: start of the 5-year period for which to extract data
+    :param model: the climate model to use
+    :param name: the model variant to use. Name follows the convention {realisation/initialisation/physics/forcing}_grid
+
+    :returns: a numpy array holding current speeds
+    :raises ValueError: if the requested year/model/name is not found in the metadata
+    :raises IOError: if the file is malformed, or has a different length to expected from the metadata
+
+    """
+    metadata = _read_clean_current_metadata(metadata_path)
+
+    # The dat file contains a header (record length), then the record, then a footer (record length)
+    # We want to find the number of bytes to skip to get to the correct record, which
+    # corresponds to the row number in the metadata file
+
+    # Find the row in the metadata file
+    row = metadata[
+        (metadata["year"] == year)
+        & (metadata["model"] == model)
+        & (metadata["name"] == name)
+    ]
+    if len(row) == 0:
+        raise ValueError(
+            f"Could not find entry for {model=}, {name=}, {year=} in metadata"
+        )
+    if len(row) > 1:
+        raise ValueError(
+            f"Found multiple entries for {model=}, {name=}, {year=} in metadata"
+        )
+
+    # This tells us how many records to skip
+    row_index = row.index[0]
+
+    with open(path, "rb") as f:
+        n_bytes_per_record = np.fromfile(f, dtype=np.int32, count=1)[0]
+
+        # Add the header + footer
+        n_bytes_per_record += 8
+
+        # Check the file is the right size, based on the metadata
+        expected_size = int(n_bytes_per_record) * len(metadata)
+        f.seek(0, 2)  # Seek to end of file
+        actual_size = f.tell()
+        if actual_size != expected_size:
+            raise IOError(
+                f"File size {actual_size} does not match expected {expected_size} from metadata"
+            )
+
+        offset = row_index * n_bytes_per_record
+
+        f.seek(offset)
+        header = np.fromfile(f, dtype=np.int32, count=1)[0]
+        if header + 8 != n_bytes_per_record:
+            raise IOError(
+                f"Record length marker {header} does not match expected {n_bytes_per_record - 8}"
+            )
+
+        retval = np.fromfile(f, dtype="<f4", count=header // 4)
+
+    retval[retval == -1.9e19] = np.nan
+
+    # Make it look right
+    retval = np.flipud(retval.reshape((720, 1440)))
+
+    return current_speed_from_mdt(retval)
 
 
 def _included_indices(
