@@ -57,7 +57,7 @@ def _read_clean_current_metadata(metadata_path: pathlib.Path) -> pd.DataFrame:
     # First line is the number of models/runs
     with open(metadata_path, "r") as f:
         num_runs = int(f.readline().strip())
-        df = pd.read_csv(f, names=["model", "name", "year"], sep="\s+")
+        df = pd.read_csv(f, names=["model", "name", "year"], sep=r"\s+")
 
     if len(df) != num_runs:
         raise IOError(

@@ -42,25 +42,29 @@ def show(batch: torch.Tensor, **kwargs) -> plt.Figure:
     return fig
 
 
-def hist(batch: torch.Tensor, **hist_kw) -> plt.Figure:
+def hist(batch: torch.Tensor, axis: plt.Axes = None, **hist_kw) -> plt.Figure:
     """
     Plot a histogram of the pixel values in the batch of images
 
     This might correspond to velocities - we might be interested in this to see if
     our GAN is correctly generating the noise distribution.
     """
-    fig, axis = plt.subplots()
+    if axis is None:
+        fig, axis = plt.subplots()
     axis.hist(batch.cpu().detach().numpy().flatten(), **hist_kw)
 
-    return fig
+    return axis.figure
 
 
-def fft(batch) -> plt.Figure:
+def fft(batch: torch.Tensor, axis: plt.Axes = None) -> plt.Figure:
     """
     Plot the average FFT magnitude of the batch of images
 
     This is useful for visualising the frequency content of the images.
     """
+    new_axis = axis is None
+    if new_axis:
+        fig, axis = plt.subplots()
     fft_sum = None
     for img in batch.cpu().detach().numpy():
         fft_img = np.abs(np.fft.fft2(img.squeeze()))
@@ -79,7 +83,6 @@ def fft(batch) -> plt.Figure:
     freq_x = np.fft.fftshift(np.fft.fftfreq(w))
     freq_y = np.fft.fftshift(np.fft.fftfreq(h))
 
-    fig, axis = plt.subplots()
     axis.imshow(
         fft_avg,
         norm=LogNorm(),
@@ -88,6 +91,7 @@ def fft(batch) -> plt.Figure:
         origin="lower",
     )
 
-    fig.colorbar(axis.images[0], ax=axis, orientation="vertical")
+    if new_axis:
+        fig.colorbar(axis.images[0], ax=axis, orientation="vertical")
 
-    return fig
+    return axis.figure
