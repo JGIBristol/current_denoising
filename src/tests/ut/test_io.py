@@ -76,25 +76,6 @@ def test_extract_indices(rng):
     assert actual_indices == expected_indices
 
 
-def test_tile(image):
-    """
-    Test extracting a tile from an array
-    """
-    expected_tile = np.array([[10, 11], [18, 19]])
-
-    assert np.array_equal(ioutils._tile(image, (1, 2), 2), expected_tile)
-
-
-def test_tile_rms():
-    """
-    Check we calculate RMS properly
-    """
-    tile = np.array([[10, 11], [18, 19]])
-    expected_rms = np.sqrt((10**2 + 11**2 + 18**2 + 19**2) / 4)
-
-    assert ioutils._tile_rms(tile) == pytest.approx(expected_rms)
-
-
 class MockRNG:
     """
     Used to mock an RNG - returns a specified sequence of integers
@@ -151,6 +132,16 @@ def test_extract_tiles(image):
     np.testing.assert_array_equal(tiles[1], expected[1])
     np.testing.assert_array_equal(tiles[2], expected[2])
     np.testing.assert_array_equal(tiles[3], expected[3])
+
+
+def test_tile_rms():
+    """
+    Check we calculate RMS properly
+    """
+    tile = np.array([[10, 11], [18, 19]])
+    expected_rms = np.sqrt((10**2 + 11**2 + 18**2 + 19**2) / 4)
+
+    assert ioutils._tile_rms(tile) == pytest.approx(expected_rms)
 
 
 def test_bad_max_latitude():

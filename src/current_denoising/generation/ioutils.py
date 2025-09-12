@@ -8,7 +8,7 @@ from functools import cache
 import numpy as np
 import pandas as pd
 
-from ..plotting.maps import lat_long_grid
+from ..utils import util
 
 
 class IOError(Exception):
@@ -96,7 +96,7 @@ def current_speed_from_mdt(mdt: np.ndarray) -> np.ndarray:
     R = 6_371_229.0
 
     # Find the grid spacing (in m)
-    lats, longs = lat_long_grid(mdt.shape)
+    lats, longs = util.lat_long_grid(mdt.shape)
     dlat = np.abs(lats[1] - lats[0]) * torad * R
     dlong = (
         np.abs(longs[1] - longs[0]) * torad * R * np.cos(torad * lats)[:, np.newaxis]
@@ -279,13 +279,6 @@ def _tile_index(
     return y_index, x_index
 
 
-def _tile(input_img: np.ndarray, start: tuple[int, int], size: int) -> np.ndarray:
-    """
-    Extract a tile at the provided location + size from a 2d array
-    """
-    return input_img[start[0] : start[0] + size, start[1] : start[1] + size]
-
-
 def _tile_rms(tile: np.ndarray) -> float:
     """
     Calculate the RMS of a tile, ignoring NaNs
@@ -350,7 +343,7 @@ def extract_tiles(
             tile_size=tile_size,
         )
 
-        tile = _tile(input_img, (y, x), tile_size)
+        tile = util.tile(input_img, (y, x), tile_size)
 
         if tile.shape != (tile_size, tile_size):
             raise IOError(
