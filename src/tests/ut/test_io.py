@@ -188,3 +188,24 @@ def test_exclude_latitude_too_small(tall_image):
     """
     with pytest.raises(ioutils.IOError):
         ioutils._included_indices(tall_image.shape[0], 4, 15.0)
+
+
+def test_clipped_coriolis():
+    """
+    Check that we correctly clip the coriolis parameter
+    """
+    latitudes = np.arange(-90, 100, 10)
+
+    raw_coriolis = ioutils._coriolis_parameter(latitudes)
+    expected_coriolis = raw_coriolis.copy()
+    expected_coriolis[8:9] = raw_coriolis[7]
+    expected_coriolis[9:11] = -raw_coriolis[7]
+
+    assert np.any(raw_coriolis != expected_coriolis)
+
+    assert np.array_equal(
+        ioutils.clipped_coriolis_param(latitudes, clip_at=10), expected_coriolis
+    )
+    assert np.array_equal(
+        ioutils.clipped_coriolis_param(latitudes, clip_at=15), expected_coriolis
+    )

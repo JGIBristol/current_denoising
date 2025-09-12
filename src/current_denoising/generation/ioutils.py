@@ -77,9 +77,42 @@ def _coriolis_parameter(latitudes: np.ndarray) -> np.ndarray:
     return 2 * omega * np.sin(latitudes * torad)
 
 
-def current_speed_from_mdt(mdt: np.ndarray) -> np.ndarray:
+def clipped_coriolis_param(latitudes: np.ndarray, clip_at: float) -> np.ndarray:
     """
-    Convert geodetic MDT to currents.
+    Calculate the coriolis parameter at each latitude, clipping it to the value at `clip_at` degrees
+
+    Sets values at exactly 0 to + (could equally choose it to be negative, but we don't)
+    """
+    orig = _coriolis_parameter(latitudes)
+    to_clip = np.abs(latitudes) <= clip_at
+
+    clipped = orig.copy()
+    clipped[to_clip] = np.min(np.abs(orig[~to_clip]))
+    # If the original coriolis parameter was negative, make sure we keep it negative
+    clipped[to_clip & (orig < 0)] *= -1
+
+    return clipped
+
+
+def _dlat_dlong(shape: tuple[int, int]) -> tuple[float, np.ndarray]:
+    """
+    Get the grid spacing in metres, given the shape of the grid.
+    """
+    torad = np.pi / 180.0
+    R = 6_371_229.0
+
+    lats, longs = util.lat_long_grid(shape)
+    dlat = np.abs(lats[1] - lats[0]) * torad * R
+    dlong = (
+        np.abs(longs[1] - longs[0]) * torad * R * np.cos(torad * lats)[:, np.newaxis]
+    )
+
+    return dlat, dlong
+
+
+def current_speed_from_mdt(mdt: np.ndarray, clip_at: float = 2.5) -> np.ndarray:
+    """
+    Convert geodetic MDT to currents, clipping the coriolis parameter to avoid infinities at the equator.
 
     By assuming geostrophic balance, we can take the gradient of the MDT to get the steady-state
     currents.
@@ -91,32 +124,27 @@ def current_speed_from_mdt(mdt: np.ndarray) -> np.ndarray:
     :returns: the current speed in m/s
 
     """
-    g = 9.80665
-    torad = np.pi / 180.0
-    R = 6_371_229.0
+
+    lats, _ = util.lat_long_grid(mdt.shape)
 
     # Find the grid spacing (in m)
-    lats, longs = util.lat_long_grid(mdt.shape)
-    dlat = np.abs(lats[1] - lats[0]) * torad * R
-    dlong = (
-        np.abs(longs[1] - longs[0]) * torad * R * np.cos(torad * lats)[:, np.newaxis]
-    )
+    dlat, dlong = _dlat_dlong(mdt.shape)
 
     # Find the coriolis parameter at each latitude
-    f = _coriolis_parameter(lats)
+    f = clipped_coriolis_param(lats, clip_at)
 
     # Velocities are gradients * coriolis param for geostrophic balance
     dmdt_dlat = np.gradient(mdt, axis=0) / dlat
     dmdt_dlon = np.gradient(mdt, axis=1) / dlong
 
     # u should be negative, but it doesnt matter for speed
-    u = g / f[:, np.newaxis] * dmdt_dlat
-    v = g / f[:, np.newaxis] * dmdt_dlon
+    u = GRAVITY / f[:, np.newaxis] * dmdt_dlat
+    v = GRAVITY / f[:, np.newaxis] * dmdt_dlon
 
     return np.sqrt(u**2 + v**2)
 
 
-def read_clean_currents(
+def read_clean_mdt(
     path: pathlib.Path,
     metadata_path: pathlib.Path,
     *,
@@ -125,29 +153,7 @@ def read_clean_currents(
     name: str = "r1i1p1f1_gn",
 ) -> np.ndarray:
     """
-    Read clean current data from a .dat file.
-
-    Read a .dat file containing clean current data,
-    given the model/name/year, returning a 720x1440 numpy array giving the current
-    in m/s.
-    Sets land grid points to np.nan.
-    Since the clean current data is stored in a large file containing multiple years and models, we need
-    to choose the correct one.
-
-    Notes on the name convention from the CMIP6 documentation can be found in docs/current_denoising/generation/ioutils.md,
-    or in the original at https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk.
-
-    :param path: location of the .dat file; clean current data is located in
-                 data/projects/SING/richard_stuff/Table2/clean_currents/ on the RDSF
-    :param metadata_path: location of the metadata .csv file describing the contents of the .dat file
-    :param year: start of the 5-year period for which to extract data
-    :param model: the climate model to use
-    :param name: the model variant to use. Name follows the convention {realisation/initialisation/physics/forcing}_grid
-
-    :returns: a numpy array holding current speeds
-    :raises ValueError: if the requested year/model/name is not found in the metadata
-    :raises IOError: if the file is malformed, or has a different length to expected from the metadata
-
+    Read clean MDT data from a .dat file.
     """
     metadata = _read_clean_current_metadata(metadata_path)
 
@@ -202,9 +208,47 @@ def read_clean_currents(
     retval[retval == -1.9e19] = np.nan
 
     # Make it look right
-    retval = np.flipud(retval.reshape((720, 1440)))
+    return np.flipud(retval.reshape((720, 1440)))
 
-    return current_speed_from_mdt(retval)
+
+def read_clean_currents(
+    path: pathlib.Path,
+    metadata_path: pathlib.Path,
+    *,
+    year: int,
+    model: str = "ACCESS-CM2",
+    name: str = "r1i1p1f1_gn",
+    clip_at: float = 2.5,
+) -> np.ndarray:
+    """
+    Read clean current data from a .dat file, clipping the speed to the provided value
+
+    Read a .dat file containing clean current data,
+    given the model/name/year, returning a 720x1440 numpy array giving the current
+    in m/s.
+    Sets land grid points to np.nan.
+    Since the clean current data is stored in a large file containing multiple years and models, we need
+    to choose the correct one.
+
+    Notes on the name convention from the CMIP6 documentation can be found in docs/current_denoising/generation/ioutils.md,
+    or in the original at https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk.
+
+    :param path: location of the .dat file; clean current data is located in
+                 data/projects/SING/richard_stuff/Table2/clean_currents/ on the RDSF
+    :param metadata_path: location of the metadata .csv file describing the contents of the .dat file
+    :param year: start of the 5-year period for which to extract data
+    :param model: the climate model to use
+    :param name: the model variant to use. Name follows the convention {realisation/initialisation/physics/forcing}_grid
+    :param clip_at: latitude (in degrees) at which to clip the coriolis parameter
+
+    :returns: a numpy array holding current speeds
+    :raises ValueError: if the requested year/model/name is not found in the metadata
+    :raises IOError: if the file is malformed, or has a different length to expected from the metadata
+
+    """
+    mdt = read_clean_mdt(path, metadata_path, year=year, model=model, name=name)
+
+    return current_speed_from_mdt(mdt, clip_at=clip_at)
 
 
 def _included_indices(
