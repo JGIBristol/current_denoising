@@ -87,7 +87,6 @@ class Generator(torch.nn.Module):
         # small, low-res feature map of this size
         self.init_size = 4
         num_upsamples = int(np.log2(config["img_size"])) - 2
-        print(2**num_upsamples * self.init_size)
         if (2**num_upsamples * self.init_size) != img_size:
             raise ModelError(f"img_size must be a power of 2; got {img_size}")
 
