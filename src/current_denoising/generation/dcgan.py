@@ -34,16 +34,19 @@ class TileLoader(torch.utils.data.Dataset):
             )
 
         # Rescale to [-1, 1] for the GAN
+        # We already know there are no NaNs in the data, so its safe to use
+        # min and max here instead of nan-aware versions
         min_ = np.min(tiles)
         max_ = np.max(tiles)
         self.images = 2 * (tiles - min_) / (max_ - min_) - 1
 
     def __len__(self):
+        """Total number of training patches"""
         return len(self.images)
 
     def __getitem__(self, idx: int):
-        image = torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
-        return image
+        """Get a training patch"""
+        return torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
 
 
 class Generator(torch.nn.Module):
