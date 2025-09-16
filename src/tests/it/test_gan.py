@@ -10,16 +10,31 @@ from current_denoising.generation import dcgan
 @pytest.fixture
 def generator():
     """uninitalised generator"""
-    config = {"img_size": 32, "latent_dim": 1, "channels": 1}
+    config = {"img_size": 32, "latent_dim": 1}
     return dcgan.Generator(config)
 
 
-def test_invalid_input_size(generator):
+def test_invalid_input_size():
     """
     Check we get an error if the input size is invalid
     """
     with pytest.raises(dcgan.ModelError):
-        config = {"img_size": 31, "latent_dim": 1, "channels": 1}
+        config = {"img_size": 28, "latent_dim": 1}
+        dcgan.Generator(config)
+    with pytest.raises(dcgan.ModelError):
+        config = {"img_size": 36, "latent_dim": 1}
+        dcgan.Generator(config)
+
+
+def test_invalid_config():
+    """
+    Check we get an error if the input size is invalid
+    """
+    with pytest.raises(dcgan.ModelError):
+        config = {"latent_dim": 1}
+        dcgan.Generator(config)
+    with pytest.raises(dcgan.ModelError):
+        config = {"img_size": 32}
         dcgan.Generator(config)
 
 

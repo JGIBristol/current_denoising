@@ -14,8 +14,10 @@ from torcheval.metrics import FrechetInceptionDistance
 class DataError(Exception):
     """General error with data"""
 
+
 class ModelError(Exception):
     """Error setting up a model"""
+
 
 class GenerationError(Exception):
     """Error during generation"""
@@ -73,13 +75,23 @@ class Generator(torch.nn.Module):
                                       Must be a power of 2
                           - latent_dim: dimension of the input noise vector
         """
+        if "img_size" not in config or "latent_dim" not in config:
+            raise ModelError(
+                f"config must contain 'img_size' and 'latent_dim'; got {config}"
+            )
 
-        if config["img_size"] % 4:
-            raise ModelError("img_size must be a multiple of 4")
-
-        super().__init__()
         img_size = config["img_size"]
         latent_dim = config["latent_dim"]
+
+        # Our generator starts by projecting the latent space into a
+        # small, low-res feature map of this size
+        self.init_size = 4
+        num_upsamples = int(np.log2(config["img_size"])) - 2
+        print(2**num_upsamples * self.init_size)
+        if (2**num_upsamples * self.init_size) != img_size:
+            raise ModelError(f"img_size must be a power of 2; got {img_size}")
+
+        super().__init__()
 
         self.init_size = img_size // 4
 
@@ -88,22 +100,16 @@ class Generator(torch.nn.Module):
         )
 
         self.conv_blocks = torch.nn.Sequential(
-
             torch.nn.BatchNorm2d(128),
             torch.nn.Upsample(scale_factor=2),
-
             torch.nn.Conv2d(128, 128, 3, stride=1, padding=1),
             torch.nn.BatchNorm2d(128, 0.8),
             torch.nn.LeakyReLU(0.2, inplace=True),
-
             torch.nn.Upsample(scale_factor=2),
-
             torch.nn.Conv2d(128, 64, 3, stride=1, padding=1),
             torch.nn.BatchNorm2d(64, 0.8),
             torch.nn.LeakyReLU(0.2, inplace=True),
-
             torch.nn.Conv2d(64, 1, 3, stride=1, padding=1),
-
             torch.nn.Tanh(),
         )
 
