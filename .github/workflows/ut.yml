@@ -1,9 +1,6 @@
 name: Unit Tests
 on:
-  push:
-    branches:
-      - main
-      - faster_tests
+  push
     
 jobs:
   scripts:
