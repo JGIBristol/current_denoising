@@ -35,8 +35,9 @@ def show(batch: torch.Tensor, **kwargs) -> plt.Figure:
     fig, axes = plt.subplots(
         nrows=n_rows, ncols=n_cols, figsize=(n_cols * 3, n_rows * 3)
     )
-    for i, axis in enumerate(axes.flat):
-        axis.imshow(batch[i].cpu().detach().numpy().transpose(1, 2, 0), **kwargs)
+    for i, img in enumerate(batch):
+        axis = axes.flat[i]
+        axis.imshow(img.cpu().detach().numpy().transpose(1, 2, 0), **kwargs)
         axis.axis("off")
 
     return fig
