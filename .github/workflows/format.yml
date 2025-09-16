@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Format
 on:
   push
     
@@ -14,8 +14,7 @@ jobs:
         with:
           version: "latest"
 
-      - name: UT
+      - name: format
         run: |
-          uv sync --only-group test
-          uv pip install -e .
-          uv run --only-group test pytest src/tests/ut/
+          uv sync --only-group dev
+          uv run --only-group dev black --check src/current_denoising/ src/tests/

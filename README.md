@@ -1,6 +1,11 @@
 Current Denoising
 ====
 
+![UT](https://github.com/JGIBristol/current_denoising/actions/workflows/ut.yml/badge.svg?branch=main)
+![IT](https://github.com/JGIBristol/current_denoising/actions/workflows/it.yml/badge.svg?branch=main)
+![Format](https://github.com/JGIBristol/current_denoising/actions/workflows/format.yml/badge.svg?branch=main)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 An implementation of the data synthesis and denoising algorithms described in [^1] and [^2].
 
 TODO brief introduction to the project

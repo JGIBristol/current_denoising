@@ -1,6 +1,8 @@
-name: Unit Tests
+name: Integration Tests
 on:
-  push
+  push:
+    branches: main
+  
     
 jobs:
   scripts:
@@ -14,8 +16,7 @@ jobs:
         with:
           version: "latest"
 
-      - name: UT
+      - name: IT
         run: |
-          uv sync --only-group test
-          uv pip install -e .
-          uv run --only-group test pytest src/tests/ut/
+          uv sync
+          uv run pytest src/tests/it/

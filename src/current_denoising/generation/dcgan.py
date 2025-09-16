@@ -15,6 +15,10 @@ class DataError(Exception):
     """General error with data"""
 
 
+class GenerationError(Exception):
+    """Error during generation"""
+
+
 class TileLoader(torch.utils.data.Dataset):
     """
     Used to load tiles for GAN training
@@ -371,3 +375,31 @@ def train(generator: Generator, discriminator: Discriminator, config: dict) -> t
         d_grads,
         grad_norms,
     )
+
+
+def generate_tiles(
+    generator: torch.nn.Module, *, n_tiles: int, device: str
+) -> np.ndarray:
+    """
+    Generate tiles using the generator, scaled to between 0 and 1.
+
+    Returns the tiles as a numpy array of shape (n_tiles, tile_size, tile_size)
+    on the CPU (even if generation happens on a GPU).
+
+    :param generator: trained generator model
+    :param n_tiles: number of tiles to generate
+    :param device: device to run the generator on
+
+    :return: numpy array of shape (n_tiles, tile_size, tile_size)
+    """
+    if device not in ("cpu", "cuda"):
+        raise GenerationError("device must be 'cpu' or 'cuda'")
+
+    generator.eval()
+    latent_dim = generator.l1[0].in_features
+
+    with torch.no_grad():
+        z = torch.randn(n_tiles, latent_dim).to(device)
+        gen_tile = ((generator(z) + 1) / 2).squeeze(1).cpu().numpy()
+
+    return gen_tile
