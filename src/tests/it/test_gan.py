@@ -14,6 +14,15 @@ def generator():
     return dcgan.Generator(config)
 
 
+def test_invalid_input_size(generator):
+    """
+    Check we get an error if the input size is invalid
+    """
+    with pytest.raises(dcgan.ModelError):
+        config = {"img_size": 31, "latent_dim": 1, "channels": 1}
+        dcgan.Generator(config)
+
+
 def test_invalid_device(generator):
     """
     Check we raise an error if the device is invalid

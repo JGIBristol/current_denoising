@@ -14,6 +14,8 @@ from torcheval.metrics import FrechetInceptionDistance
 class DataError(Exception):
     """General error with data"""
 
+class ModelError(Exception):
+    """Error setting up a model"""
 
 class GenerationError(Exception):
     """Error during generation"""
