@@ -11,7 +11,7 @@ from current_denoising.generation import dcgan
 def generator():
     """uninitalised generator"""
     config = {"img_size": 32, "latent_dim": 1, "channels": 1}
-    generator = dcgan.Generator(config)
+    return dcgan.Generator(config)
 
 
 def test_invalid_device(generator):
