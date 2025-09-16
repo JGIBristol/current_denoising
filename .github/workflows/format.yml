@@ -1,0 +1,20 @@
+name: Unit Tests
+on:
+  push
+    
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: format
+        run: |
+          uv sync --only-group dev
+          uv run --only-group dev black --check src/current_denoising/ src/tests/
