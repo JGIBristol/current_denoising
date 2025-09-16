@@ -53,29 +53,57 @@ class TileLoader(torch.utils.data.Dataset):
 
 class Generator(torch.nn.Module):
     """
-    Generates noise
+    Generator for the noise patches.
+
+    Generates an image from a random input vector; should be trained on
+    deep-ocean patches of satellite data, such that the slowly-varying
+    signal is not learned, but the small-scale noise is.
+
+    Assumes the input images have 1 channel.
+
     """
 
     def __init__(self, config: dict):
-        """define the arch"""
-        super().__init__()
+        """
+        defines the architecture
 
-        self.init_size = config["img_size"] // 4
+        :param config: configuration dictionary
+                       Should contain:
+                          - img_size: size of the generated image (assumed square).
+                                      Must be a power of 2
+                          - latent_dim: dimension of the input noise vector
+        """
+
+        if config["img_size"] % 4:
+            raise ModelError("img_size must be a multiple of 4")
+
+        super().__init__()
+        img_size = config["img_size"]
+        latent_dim = config["latent_dim"]
+
+        self.init_size = img_size // 4
+
         self.l1 = torch.nn.Sequential(
-            torch.nn.Linear(config["latent_dim"], 128 * self.init_size**2)
+            torch.nn.Linear(latent_dim, 128 * self.init_size**2)
         )
 
         self.conv_blocks = torch.nn.Sequential(
+
             torch.nn.BatchNorm2d(128),
             torch.nn.Upsample(scale_factor=2),
+
             torch.nn.Conv2d(128, 128, 3, stride=1, padding=1),
             torch.nn.BatchNorm2d(128, 0.8),
             torch.nn.LeakyReLU(0.2, inplace=True),
+
             torch.nn.Upsample(scale_factor=2),
+
             torch.nn.Conv2d(128, 64, 3, stride=1, padding=1),
             torch.nn.BatchNorm2d(64, 0.8),
             torch.nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Conv2d(64, config["channels"], 3, stride=1, padding=1),
+
+            torch.nn.Conv2d(64, 1, 3, stride=1, padding=1),
+
             torch.nn.Tanh(),
         )
 
