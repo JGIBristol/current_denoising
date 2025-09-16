@@ -21,7 +21,7 @@ class GenerationError(Exception):
 
 class TileLoader(torch.utils.data.Dataset):
     """
-    Used to load tiles for GAN training
+    Dataloader for GAN training
     """
 
     def __init__(self, tiles: np.ndarray):
@@ -42,7 +42,7 @@ class TileLoader(torch.utils.data.Dataset):
         return len(self.images)
 
     def __getitem__(self, idx: int):
-        image = torch.FloatTensor(self.images[idx]).unsqueeze(0)
+        image = torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
         return image
 
 
