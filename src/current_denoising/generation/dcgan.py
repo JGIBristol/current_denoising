@@ -83,38 +83,56 @@ class Generator(torch.nn.Module):
         img_size = config["img_size"]
         latent_dim = config["latent_dim"]
 
-        # Our generator starts by projecting the latent space into a
-        # small, low-res feature map of this size
+        # Other things that I might want to make configurable later
         self.init_size = 4
+        self.base_channels = 128
+
+        # Our generator starts by projecting the latent space into a
+        # small, low-res feature map
         num_upsamples = int(np.log2(config["img_size"])) - 2
         if (2**num_upsamples * self.init_size) != img_size:
             raise ModelError(f"img_size must be a power of 2; got {img_size}")
 
         super().__init__()
 
-        self.init_size = img_size // 4
-
+        # Project the latent space into a small feature map
         self.l1 = torch.nn.Sequential(
-            torch.nn.Linear(latent_dim, 128 * self.init_size**2)
+            torch.nn.Linear(latent_dim, self.base_channels * self.init_size**2)
         )
 
-        self.conv_blocks = torch.nn.Sequential(
-            torch.nn.BatchNorm2d(128),
-            torch.nn.Upsample(scale_factor=2),
-            torch.nn.Conv2d(128, 128, 3, stride=1, padding=1),
-            torch.nn.BatchNorm2d(128, 0.8),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Upsample(scale_factor=2),
-            torch.nn.Conv2d(128, 64, 3, stride=1, padding=1),
-            torch.nn.BatchNorm2d(64, 0.8),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Conv2d(64, 1, 3, stride=1, padding=1),
+        # Build up convolutional blocks
+        blocks = [
+            torch.nn.BatchNorm2d(self.base_channels),
+            torch.nn.ReLU(inplace=True),
+        ]
+
+        in_channels = self.base_channels
+        for k in range(max(0, num_upsamples - 1)):
+            out_channels = max(64, self.base_channels // (2 ** (k + 1)))
+            blocks += [
+                torch.nn.Upsample(scale_factor=2, mode="nearest"),
+                torch.nn.Conv2d(
+                    in_channels, out_channels, kernel_size=3, stride=1, padding=1
+                ),
+                torch.nn.BatchNorm2d(out_channels),
+                torch.nn.ReLU(inplace=True),
+            ]
+            in_channels = out_channels
+
+        # Final block - upsample to the right size + channels
+        # No batch norm here before tanh
+        blocks += [
+            torch.nn.Upsample(scale_factor=2, mode="nearest"),
+            torch.nn.Conv2d(in_channels, 1, kernel_size=3, stride=1, padding=1),
             torch.nn.Tanh(),
-        )
+        ]
+
+        self.conv_blocks = torch.nn.Sequential(*blocks)
 
     def forward(self, z):
         """Generate an image from noise vector z"""
         out = self.l1(z)
+        # TODO this 128 might mean something.... 
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
