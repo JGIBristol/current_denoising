@@ -6,6 +6,8 @@ Utilities for applying noise to data
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+from ..utils import util
+
 
 class NoiseApplicationError(Exception):
     """General exception for noise application errors."""
@@ -140,3 +142,43 @@ def add_noise(
     )
 
     return reweight_noisy_tile(noisy, np.nanmax(clean_target))
+
+
+def get_training_pair(
+    clean_currents: np.ndarray,
+    noise_quilt: np.ndarray,
+    strength_map: np.ndarray,
+    location: tuple[float, float],
+    rng: np.random.Generator,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get a training pair (noisy, clean) from the provided data.
+
+    Generates a synthetic noisy tile by adding noise from the noise quilt to the clean current,
+    weighted by the strength map. Extracts the tile at the provided location from the strength
+    map and clean currents; uses the size of the noise quilt to determine the size of the tile.
+    Rescales the noisy tile to better match real noisy data.
+
+    :param clean_currents: the clean current grid
+    :param noise_quilt: a noise quilt to be applied
+    :param strength_map: the noise strength map to use for weighting; must be the same size as
+                         the clean current grid.
+    :param location: the (lat, long) coordinates of the top-left corner of the tile to extract.
+                     The tile will start at the closest grid point to the provided coordinates;
+                     if two points are equally close, it will choose the northernmost/westernmost point.
+
+    :returns: the clean tile
+    :returns: the noisy tile
+    """
+    # Convert from grid points to degrees
+    deg_per_point = 180.0 / clean_currents.shape[0]
+    tile_size = noise_quilt.shape[0] * deg_per_point
+
+    # Get the clean tile at the right location
+    clean_patch = util.get_tile(clean_currents, location, tile_size)
+
+    # Get the corresponding tile from the strength map
+    strength_patch = util.get_tile(strength_map, location, tile_size)
+
+    # Apply the noise
+    return clean_patch, add_noise(clean_patch, noise_quilt, strength_patch, rng)

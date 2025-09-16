@@ -10,6 +10,8 @@ import pandas as pd
 
 from ..utils import util
 
+GRAVITY = 9.80665
+
 
 class IOError(Exception):
     """General error with I/O"""
