@@ -207,6 +207,7 @@ def _gradient_penalty(
     critic: torch.nn.Module,
     real_samples: torch.Tensor,
     fake_samples: torch.Tensor,
+    alpha: torch.Tensor,
 ) -> torch.Tensor:
     """
     WGAN gradient penalty; instead of clipping weights, we penalize the model if |gradient| is not 1.
@@ -220,6 +221,7 @@ def _gradient_penalty(
     :param critic: the discriminator/critic model
     :param real_samples: batch of real samples
     :param fake_samples: batch of fake samples
+    :param alpha: weight for real vs fake samples
 
     """
     if real_samples.shape != fake_samples.shape:
@@ -227,7 +229,6 @@ def _gradient_penalty(
             f"real_samples and fake_samples must have the same shape; got {real_samples.shape} and {fake_samples.shape}"
         )
 
-    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=real_samples.device)
     mixture = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
 
     d_interpolates = critic(mixture)
@@ -349,8 +350,9 @@ def train(generator: Generator, discriminator: Discriminator, config: dict) -> t
                 real_loss = discriminator(real_imgs)
                 fake_loss = discriminator(gen_imgs_d.detach())
 
+                alpha = torch.rand(real_imgs.size(0), 1, 1, 1, device=real_imgs.device)
                 gp, grad_norm = _gradient_penalty(
-                    discriminator, real_imgs.data, gen_imgs_d.data
+                    discriminator, real_imgs.data, gen_imgs_d.data, alpha
                 )
                 d_obj = fake_loss.mean() - real_loss.mean()
                 d_loss = d_obj + config["lambda_gp"] * gp
