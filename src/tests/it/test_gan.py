@@ -89,4 +89,42 @@ def test_grad_penalty_sizes(discriminator):
     x = torch.ones((4, 1, 32, 32), requires_grad=True)
     y = torch.ones((3, 1, 32, 32), requires_grad=True)
     with pytest.raises(dcgan.TrainingError):
-        dcgan._gradient_penalty(discriminator, x, y)
+        dcgan._gradient_penalty(discriminator, x, y, 0)
+
+
+class FakeDiscriminator(torch.nn.Module):
+    """
+    Fake discriminator that just does a sum
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x.view(x.size(0), -1).sum(dim=1, keepdim=True)
+
+
+def test_grad_penalty_values():
+    """
+    Check we get the right value from the gradient penalty function
+    """
+    # With these inputs, every element in the interpolated tensor is (1-alpha)
+    alpha = 0.5
+    real = torch.ones((4, 1, 32, 32), requires_grad=True)
+    fake = torch.zeros((4, 1, 32, 32), requires_grad=True)
+
+    # Since the critic is just a sum, it will return 32*32*(1-alpha) for each input
+    disc = FakeDiscriminator()
+
+    # Since the critic is a sum, the gradient will be 1 for each input element
+    # So the gradient is a tensor of 1s
+    # This means the norm is sqrt(32*32)
+    # And the penalty is (32-1)^2
+    expected_gp, expected_norm = torch.tensor(
+        31**2, dtype=torch.float32
+    ), torch.tensor(32, dtype=torch.float32)
+
+    gp, grad_norm = dcgan._gradient_penalty(disc, real, fake, alpha)
+
+    assert torch.isclose(gp, expected_gp)
+    assert torch.isclose(grad_norm, expected_norm)
