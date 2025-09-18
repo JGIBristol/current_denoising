@@ -89,7 +89,7 @@ class Generator(torch.nn.Module):
 
         # Our generator starts by projecting the latent space into a
         # small, low-res feature map
-        num_upsamples = int(np.log2(config["img_size"])) - 2
+        num_upsamples = int(np.log2(config["img_size"]) - np.log2(self.init_size))
         if (2**num_upsamples * self.init_size) != img_size:
             raise ModelError(f"img_size must be a power of 2; got {img_size}")
 
@@ -107,8 +107,8 @@ class Generator(torch.nn.Module):
         ]
 
         in_channels = self.base_channels
-        for k in range(max(0, num_upsamples - 1)):
-            out_channels = max(64, self.base_channels // (2 ** (k + 1)))
+        for k in range(num_upsamples - 1):
+            out_channels = self.base_channels // (2 ** (k + 1))
             blocks += [
                 torch.nn.Upsample(scale_factor=2, mode="nearest"),
                 torch.nn.Conv2d(
@@ -132,8 +132,7 @@ class Generator(torch.nn.Module):
     def forward(self, z):
         """Generate an image from noise vector z"""
         out = self.l1(z)
-        # TODO this 128 might mean something.... 
-        out = out.view(out.shape[0], 128, self.init_size, self.init_size)
+        out = out.view(out.shape[0], self.base_channels, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
 
