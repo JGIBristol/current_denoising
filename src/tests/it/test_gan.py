@@ -80,3 +80,13 @@ def test_discriminator(discriminator):
     x = torch.randn((4, 1, 32, 32))
     out = discriminator(x)
     assert out.shape == (4, 1)
+
+
+def test_grad_penalty_sizes(discriminator):
+    """
+    Check we get the right error if we pass tensors of the wrong shape to the gradient penalty fcn
+    """
+    x = torch.ones((4, 1, 32, 32), requires_grad=True)
+    y = torch.ones((3, 1, 32, 32), requires_grad=True)
+    with pytest.raises(dcgan.TrainingError):
+        dcgan._gradient_penalty(discriminator, x, y)

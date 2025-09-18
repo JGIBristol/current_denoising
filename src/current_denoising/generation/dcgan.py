@@ -23,6 +23,10 @@ class GenerationError(Exception):
     """Error during generation"""
 
 
+class TrainingError(Exception):
+    """Error during training"""
+
+
 class TileLoader(torch.utils.data.Dataset):
     """
     Dataloader for GAN training
@@ -199,39 +203,46 @@ class Discriminator(torch.nn.Module):
         return validity
 
 
-def _gradient_penalty(D, real_samples, fake_samples) -> torch.Tensor:
+def _gradient_penalty(
+    critic: torch.nn.Module,
+    real_samples: torch.Tensor,
+    fake_samples: torch.Tensor,
+) -> torch.Tensor:
     """
-    WGAN gradient penalty
+    WGAN gradient penalty; instead of clipping weights, we penalize the model if |gradient| is not 1.
 
-    Instead of clipping weights, we penalize the model if |gradient| is not 1.
-    We do this by interpolating between real and fake samples,
-    and computing the gradient of the discriminator's output with respect
+    We do this by interpolating between real and fake samples (add a random amount of real and fake
+    together), and compute the gradient of the discriminator's output with respect
     to these interpolated samples.
 
-    We then penalize the model if the norm of this gradient is not 1.
+    We then penalize the model if the norm of this gradient is not 1, using a mean-squared error.
 
-    :
+    :param critic: the discriminator/critic model
+    :param real_samples: batch of real samples
+    :param fake_samples: batch of fake samples
 
     """
-    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=real_samples.device)
-    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(
-        True
-    )
+    if real_samples.shape != fake_samples.shape:
+        raise TrainingError(
+            f"real_samples and fake_samples must have the same shape; got {real_samples.shape} and {fake_samples.shape}"
+        )
 
-    d_interpolates = D(interpolates)
+    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=real_samples.device)
+    mixture = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+
+    d_interpolates = critic(mixture)
     fake = torch.ones(d_interpolates.size(), device=real_samples.device)
 
     gradients = torch.autograd.grad(
         outputs=d_interpolates,
-        inputs=interpolates,
+        inputs=mixture,
         grad_outputs=fake,
         create_graph=True,
         retain_graph=True,
         only_inputs=True,
     )[0]
 
-    gradients = gradients.view(gradients.size(0), -1)
-    grad_norm = gradients.norm(2, dim=1)
+    grad_norm = gradients.view(gradients.size(0), -1).norm(2, dim=1)
     gradient_penalty = ((grad_norm - 1) ** 2).mean()
 
     return gradient_penalty, grad_norm.mean()
