@@ -139,33 +139,59 @@ class Generator(torch.nn.Module):
 
 class Discriminator(torch.nn.Module):
     """
-    Classifies noise as real or fake
+    Classifies a single-channel image as real or fake
+
+    Not technically a discriminator, since this is a WGAN - does not provide
+    normalised outputs, so it's a "critic" rather than a "discriminator".
     """
 
     def __init__(self, config: dict):
-        """define the arch"""
+        """
+        define the arch
+
+        :param config: configuration - should contain:
+                            - img_size: size of the generated image (assumed square).
+                            - n_blocks: number of convolutional blocks
+        """
+        if "img_size" not in config or "n_blocks" not in config:
+            raise ModelError(
+                f"Discriminator config must contain 'img_size' and 'n_blocks'; got {config}"
+            )
+
         super().__init__()
 
-        def discriminator_block(in_filters, out_filters):
+        self.n_channels = 1
+
+        def discriminator_block(in_filters: int, out_filters: int):
             block = [
-                torch.nn.Conv2d(in_filters, out_filters, 3, 2, 1),
+                torch.nn.Conv2d(
+                    in_filters, out_filters, kernel_size=3, stride=2, padding=1
+                ),
                 torch.nn.LeakyReLU(0.2, inplace=True),
             ]
             return block
 
-        self.model = torch.nn.Sequential(
-            *discriminator_block(config["channels"], 16),
-            *discriminator_block(16, 32),
-            *discriminator_block(32, 64),
-            *discriminator_block(64, 128),
-        )
+        blocks = []
+        in_ch, out_ch = self.n_channels, 16
+        for _ in range(config["n_blocks"]):
+            blocks += discriminator_block(in_ch, out_ch)
+
+            in_ch = out_ch
+            out_ch = out_ch * 2
+
+        self.model = torch.nn.Sequential(*blocks)
 
         # The height and width of downsampled image
-        ds_size = config["img_size"] // 2**4
-        self.adv_layer = torch.nn.Linear(128 * ds_size**2, 1)
+        ds_size = config["img_size"] // 2 ** config["n_blocks"]
 
-    def forward(self, img):
-        """Classify an image as real or fake"""
+        # We doubled the number of out_ch one time too many, so use
+        # in_ch here since it is half the out_ch from the last block
+        # No need to add any activation since we using a WGAN - we don't
+        # need to squash the output to [0, 1]
+        self.adv_layer = torch.nn.Linear(in_ch * ds_size**2, 1)
+
+    def forward(self, img: torch.Tensor) -> torch.Tensor:
+        """Classify a batch of images as real or fake"""
         out = self.model(img)
         out = out.view(out.shape[0], -1)
         validity = self.adv_layer(out)
