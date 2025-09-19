@@ -339,14 +339,20 @@ def train(
     :return: trained discriminator
     :return: GAN training metrics
     """
-    # TODO these are all the inputs...
+    # TODO - should just be an input
     dataloader = config["dataloader"]
+
+    # Hyperparameters
+    # TODO - should be an object
+    n_epochs = config["n_epochs"]
+    latent_dim = config["latent_dim"]
     lr = config["learning_rate"]
     d_g_lr_ratio = config["d_g_lr_ratio"]
-    n_epochs = config["n_epochs"]
     n_critic = config["n_critic"]
-    latent_dim = config["latent_dim"]
     lambda_gp = config["lambda_gp"]
+
+    # Other stuff
+    # TODO - should just be inputs
     plot_interval = config["plot_interval"]
     output_dir = config["output_dir"]
 
