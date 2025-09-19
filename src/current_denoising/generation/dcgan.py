@@ -156,7 +156,7 @@ class Generator(torch.nn.Module):
             )
 
         img_size = config["img_size"]
-        latent_dim = config["latent_dim"]
+        self.latent_dim = config["latent_dim"]
 
         # Other things that I might want to make configurable later
         self.init_size = 4
@@ -172,7 +172,7 @@ class Generator(torch.nn.Module):
 
         # Project the latent space into a small feature map
         self.l1 = torch.nn.Sequential(
-            torch.nn.Linear(latent_dim, self.base_channels * self.init_size**2)
+            torch.nn.Linear(self.latent_dim, self.base_channels * self.init_size**2)
         )
 
         # Build up convolutional blocks
@@ -324,6 +324,22 @@ def _to_rgb(images: torch.Tensor) -> torch.Tensor:
     return images.repeat(1, 3, 1, 1)
 
 
+def _gen_imgs(generator: Generator, batch_size: int, device: str) -> torch.Tensor:
+    """
+    Generate a batch of images from the generator
+
+    :param generator: the generator model
+    :param batch_size: number of images to generate
+    :param device: device to use
+
+    :return: a (batch_size, 1, H, W) tensor of generated images
+    """
+    z_d = torch.randn(
+        batch_size, generator.latent_dim, device=device, dtype=torch.float32
+    )
+    return generator(z_d)
+
+
 def train(
     generator: Generator, discriminator: Discriminator, config: dict
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
@@ -411,10 +427,7 @@ def train(
                 # Generate some fake images for discriminator training
                 # TODO - dont use Variable/FloatTensor
                 # TODO - helper function to just generate an image
-                z_d = torch.randn(
-                    batch_size, latent_dim, device=device, dtype=torch.float32
-                )
-                gen_imgs_d = generator(z_d)
+                gen_imgs_d = _gen_imgs(generator, batch_size, device)
 
                 # detatch the generator output to avoid backpropagating through it
                 # we don't want to update the generator during discriminator training
