@@ -351,6 +351,9 @@ def train(
     n_critic = config["n_critic"]
     lambda_gp = config["lambda_gp"]
 
+    n_batches = len(dataloader)
+    batch_size = dataloader.batch_size
+
     # Other stuff
     # TODO - should just be inputs
     plot_interval = config["plot_interval"]
@@ -376,7 +379,7 @@ def train(
         feature_dim=1000, model=fid_model, device=device
     )
 
-    training_metrics = GANTrainingMetrics(n_batches=len(dataloader), n_epochs=n_epochs)
+    training_metrics = GANTrainingMetrics(n_batches=n_batches, n_epochs=n_epochs)
 
     # TODO - Pre-generate alphas for interpolation between real and fake samples
     # This requires us to know the image size, n_critic
