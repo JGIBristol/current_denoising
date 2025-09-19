@@ -463,11 +463,11 @@ def train(
             g_loss.backward()
             optimizer_g.step()
 
-            gen_losses[-1].append(g_loss.item())
-            disc_losses[-1].append(d_loss.item())
-            w_dists[-1].append(current_w)
-            gps[-1].append(current_gp)
-            grad_norms[-1].append(current_grad_norm)
+            training_metrics.gen_losses[epoch, batch] = g_loss.item()
+            training_metrics.critic_losses[epoch, batch] = d_loss.item()
+            training_metrics.wasserstein_dists[epoch, batch] = current_w
+            training_metrics.gradient_penalties[epoch, batch] = current_gp
+            training_metrics.critic_interp_grad_norms[epoch, batch] = current_grad_norm
 
         # Find the parameter gradients (i.e. how big the update step was this epoch)
         # TODO helper...
@@ -491,8 +491,8 @@ def train(
             ),
             2,
         ).item()
-        g_grads.append(g_grad_norm)
-        d_grads.append(d_grad_norm)
+        training_metrics.generator_param_gradients[epoch] = g_grad_norm
+        training_metrics.critic_param_gradients[epoch] = d_grad_norm
 
         # Possibly plot this epoch
         if not epoch % plot_interval:
@@ -530,21 +530,10 @@ def train(
                     fid_metric.update(gen_imgs_g, is_real=False)
                     fid_metric.update(real_imgs, is_real=True)
 
-            fid_scores.append(fid_metric.compute().item())
+            training_metrics.fid_scores[epoch] = fid_metric.compute().item()
             generator.train()
 
-    return (
-        generator,
-        discriminator,
-        gen_losses,
-        disc_losses,
-        fid_scores,
-        w_dists,
-        gps,
-        g_grads,
-        d_grads,
-        grad_norms,
-    )
+    return generator, discriminator, training_metrics
 
 
 def generate_tiles(
