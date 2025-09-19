@@ -2,8 +2,6 @@
 Deep convolutional GAN (DCGAN) implementation
 """
 
-from typing import NamedTuple
-
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -59,13 +57,26 @@ class TileLoader(torch.utils.data.Dataset):
         return torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
 
 
-class GANTrainingMetrics(NamedTuple):
+class GANTrainingMetrics:
     """
-    The metrics collected during GAN training
+    Holds the metrics collected during GAN training
 
     Useful for illustrating the performance of the GAN and for reporting, diagnosis,
     optimisation etc. See the attributues for a list of the metrics collected.
     """
+
+    def __init__(self, n_batches: int, n_epochs: int):
+        """
+        Initialise empty arrays
+        """
+        self.gen_losses = np.zeros((n_epochs, n_batches))
+        self.critic_losses = np.zeros((n_epochs, n_batches))
+        self.fid_scores = np.zeros(n_epochs)
+        self.wasserstein_dists = np.zeros((n_epochs, n_batches))
+        self.gradient_penalties = np.zeros((n_epochs, n_batches))
+        self.generator_param_gradients = np.zeros(n_epochs)
+        self.critic_param_gradients = np.zeros(n_epochs)
+        self.critic_interp_grad_norms = np.zeros((n_epochs, n_batches))
 
     gen_losses: np.ndarray
     """Generator losses per epoch; shape (n_epochs, n_batches)"""
