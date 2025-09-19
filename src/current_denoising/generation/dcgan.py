@@ -324,36 +324,20 @@ def _to_rgb(images: torch.Tensor) -> torch.Tensor:
     return images.repeat(1, 3, 1, 1)
 
 
-def train(generator: Generator, discriminator: Discriminator, config: dict) -> tuple[
-    Generator,
-    Discriminator,
-    list[list[float]],
-    list[list[float]],
-    list[float],
-    list[list[float]],
-    list[list[float]],
-    list[float],
-    list[float],
-    list[list[float]],
-]:
+def train(
+    generator: Generator, discriminator: Discriminator, config: dict
+) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
-    Train the GAN
+    Train a new GAN
 
-    :param generator: generates images
+    :param generator: a generator model
     :param discriminator: classifies images as real or fake
-    :param config: configuration dictionary - see `gan.ipynb` for what it should contain
+    :param config: configuration dictionary - see `gan.ipynb` for what it should contain.
+                   TODO neaten, probably just pass straight options
 
     :return: trained generator
     :return: trained discriminator
-    :return: list of generator losses per epoch
-    :return: list of discriminator losses per epoch
-    :return: fid scores
-    :return: list of wasserstein distances per epoch
-    :return: list of gradient penalties per epoch
-    :return: list of gradient penalties per epoch
-    :return: list of average generator gradients
-    :return: list of average discriminator gradients
-    :return: list of lists of grad norms
+    :return: GAN training metrics
     """
     generator.cuda()
     discriminator.cuda()
