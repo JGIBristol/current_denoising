@@ -2,6 +2,7 @@
 Deep convolutional GAN (DCGAN) implementation
 """
 
+import pathlib
 from typing import NamedTuple
 
 import torch
@@ -69,6 +70,7 @@ class GANHyperParams(NamedTuple):
     d_g_lr_ratio: float
     n_critic: int
     lambda_gp: float
+    n_fid_batches: int
 
 
 class GANTrainingMetrics:
@@ -360,6 +362,9 @@ def train(
     dataloader: torch.utils.data.DataLoader,
     hyperparams: GANHyperParams,
     device: str,
+    *,
+    fid_interval: int = 10,
+    output_dir: pathlib.Path | None = None,
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
     Train a new GAN
@@ -367,20 +372,16 @@ def train(
     :param generator: a generator model
     :param discriminator: classifies images as real or fake
     :param dataloader: dataloader for the training data
-    :param device: device to use for training - i.e. "cpu" or "cuda
+    :param device: device to use for training - i.e. "cpu" or "cuda".
+    :param fid_interval: interval (in epochs) at which the FID will be computed.
+                          Also sets the interval at which generated images will be saved,
+                          if output_dir is not None.
+    :param output_dir: directory to save training plots to. If None, no plots will be saved.
 
     :return: trained generator
     :return: trained discriminator
     :return: GAN training metrics
     """
-    # Other stuff
-    # TODO - should just be inputs
-    plot_interval = config["plot_interval"]
-    output_dir = config["output_dir"]
-
-    # Put things in the right place - TODO this shouldn't be hardcoded
-    # Although let's be honest, we don't want to train this on a CPU, so...
-    device = "cuda"
     generator.to(device)
     discriminator.to(device)
 
@@ -507,26 +508,17 @@ def train(
         training_metrics.generator_param_gradients[epoch] = g_grad_norm
         training_metrics.critic_param_gradients[epoch] = d_grad_norm
 
-        # Possibly plot this epoch
-        if not epoch % plot_interval:
-            # Save the most recent batch of fake images
-            out_dir = output_dir / f"epoch_{epoch}"
-            out_dir.mkdir(parents=True, exist_ok=True)
-
+        # Evaluate FID and save some images, if desired
+        if not epoch % fid_interval:
+            # Just use the last batch we generated
             # Rescale from [-1, 1] to [0, 1]
             gen_imgs_g = (gen_imgs_g + 1) / 2
-            vutils.save_image(
-                gen_imgs_g.data,
-                out_dir / "fake_images.png",
-                normalize=False,
-                nrow=int(np.sqrt(batch_size)),
-            )
 
             # FID
             fid_metric.reset()
             generator.eval()
             with torch.no_grad():
-                for _ in range(16):
+                for _ in range(hyperparams.n_fid_batches):
                     # Generate some images, scale them and convert to RGB
                     # TODO i think this is wrong
                     gen_imgs_g = _gen_imgs(generator, batch_size, device)
@@ -542,6 +534,17 @@ def train(
                     # Evaluate the FID
                     fid_metric.update(gen_imgs_g, is_real=False)
                     fid_metric.update(real_imgs, is_real=True)
+
+            # Save the most recent batch of fake images
+            if output_dir is not None:
+                out_dir = output_dir / f"epoch_{epoch}"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                vutils.save_image(
+                    gen_imgs_g.data,
+                    out_dir / "fake_images.png",
+                    normalize=False,
+                    nrow=int(np.sqrt(batch_size)),
+                )
 
             training_metrics.fid_scores[epoch] = fid_metric.compute().item()
             generator.train()
