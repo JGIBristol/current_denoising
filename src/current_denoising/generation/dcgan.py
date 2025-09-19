@@ -384,6 +384,9 @@ def train(
     # TODO - Pre-generate alphas for interpolation between real and fake samples
     # This requires us to know the image size, n_critic
     # Should be shape (n_epoch, n_critic, n_batch, 1, 1, 1) and on the device
+    alphas = torch.rand(
+        (n_epochs, n_critic, batch_size, 1, 1, 1), device=device, requires_grad=False
+    )
     for epoch in tqdm(range(n_epochs)):
         for batch, imgs in enumerate(dataloader):
             batch_size = imgs.shape[0]
@@ -403,7 +406,7 @@ def train(
             w_accum = 0.0
             gp_accum = 0.0
             interp_grad_accum = 0.0
-            for j, _ in enumerate(range(n_critic)):
+            for i in range(n_critic):
                 optimizer_d.zero_grad()
 
                 # Generate some fake images for discriminator training
@@ -422,9 +425,8 @@ def train(
                 fake_loss = discriminator(gen_imgs_d.detach())
 
                 # Gradient penalty
-                alpha = torch.rand(real_imgs.size(0), 1, 1, 1, device=real_imgs.device)
                 gp, grad_norm = _gradient_penalty(
-                    discriminator, real_imgs.data, gen_imgs_d.data, alpha
+                    discriminator, real_imgs.data, gen_imgs_d.data, alphas[epoch, i]
                 )
                 d_obj = fake_loss.mean() - real_loss.mean()
                 d_loss = d_obj + lambda_gp * gp
