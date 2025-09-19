@@ -341,7 +341,10 @@ def _gen_imgs(generator: Generator, batch_size: int, device: str) -> torch.Tenso
 
 
 def train(
-    generator: Generator, discriminator: Discriminator, config: dict
+    generator: Generator,
+    discriminator: Discriminator,
+    dataloader: torch.utils.data.DataLoader,
+    config: dict,
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
     Train a new GAN
@@ -355,9 +358,6 @@ def train(
     :return: trained discriminator
     :return: GAN training metrics
     """
-    # TODO - should just be an input
-    dataloader = config["dataloader"]
-
     # Hyperparameters
     # TODO - should be an object
     n_epochs = config["n_epochs"]
@@ -366,9 +366,6 @@ def train(
     d_g_lr_ratio = config["d_g_lr_ratio"]
     n_critic = config["n_critic"]
     lambda_gp = config["lambda_gp"]
-
-    n_batches = len(dataloader)
-    batch_size = dataloader.batch_size
 
     # Other stuff
     # TODO - should just be inputs
@@ -395,10 +392,12 @@ def train(
         feature_dim=1000, model=fid_model, device=device
     )
 
+    n_batches = len(dataloader)
     training_metrics = GANTrainingMetrics(n_batches=n_batches, n_epochs=n_epochs)
 
     # Pre-generate weights for interpolation between real and fake samples when we do the
     # gradient penalty
+    batch_size = dataloader.batch_size
     alphas = torch.rand(
         (n_epochs, n_critic, batch_size, 1, 1, 1), device=device, requires_grad=False
     )
