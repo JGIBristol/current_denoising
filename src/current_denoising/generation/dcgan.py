@@ -339,40 +339,35 @@ def train(
     :return: trained discriminator
     :return: GAN training metrics
     """
-    generator.cuda()
-    discriminator.cuda()
+    # TODO these are all the inputs...
+    dataloader = config["dataloader"]
+    lr = config["learning_rate"]
+    d_g_lr_ratio = config["d_g_lr_ratio"]
 
-    optimizer_g = torch.optim.Adam(
-        generator.parameters(), lr=config["learning_rate"], betas=(0.0, 0.9)
-    )
+    # Put things in the right place - TODO this shouldn't be hardcoded
+    # Although let's be honest, we don't want to train this on a CPU, so...
+    device = "cuda"
+    generator.to(device)
+    discriminator.to(device)
+
+    # Set up optimisers
+    betas = (0.0, 0.9)
+    optimizer_g = torch.optim.Adam(generator.parameters(), lr=lr, betas=betas)
     optimizer_d = torch.optim.Adam(
-        discriminator.parameters(),
-        lr=config["learning_rate"] / config["d_g_lr_ratio"],
-        betas=(0.0, 0.9),
+        discriminator.parameters(), lr=d_g_lr_ratio, betas=betas
     )
 
-    # We'll be tracking training using the FID score
+    # We'll be tracking training using the FID score, so set that up here too
     fid_model = resnet18(weights=ResNet18_Weights.DEFAULT)
-    fid_model.to("cuda")
+    fid_model.to(device)
     fid_metric = FrechetInceptionDistance(
-        feature_dim=1000, model=fid_model, device="cuda"
+        feature_dim=1000, model=fid_model, device=device
     )
-    fid_scores = []
 
-    gen_losses = []
-    disc_losses = []
-    w_dists = []
-    gps = []
-    grad_norms = []
-    g_grads = []
-    d_grads = []
+    training_metrics = GANTrainingMetrics(
+        n_batches=len(dataloader), n_epochs=config["n_epochs"]
+    )
     for i in tqdm(range(config["n_epochs"])):
-        gen_losses.append([])
-        disc_losses.append([])
-        w_dists.append([])
-        gps.append([])
-        grad_norms.append([])
-
         for imgs in config["dataloader"]:
             batch_size = imgs.shape[0]
 
