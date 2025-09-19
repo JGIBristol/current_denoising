@@ -258,6 +258,34 @@ class GANTrainingMetrics:
 
         return fig
 
+    def plot_critic_grad_norms(self) -> plt.Figure:
+        """
+        Plot norm of critic gradients wrt the input images.
+
+        This tells us how sensitive the critic is to perturbations of
+        the input tensor; the norm should be around 1.
+
+        :return: a figure
+        """
+        fig, axis = plt.subplots()
+        grad_norms = self.critic_interp_grad_norms
+        x = np.arange(len(grad_norms))
+        axis.plot(x, np.mean(grad_norms, axis=1), color="C0")
+        axis.fill_between(
+            x,
+            np.min(grad_norms, axis=1),
+            np.max(grad_norms, axis=1),
+            alpha=0.2,
+            color="C0",
+        )
+        axis.axhline(0.9, color="k", linestyle="dashed")
+        axis.axhline(1.1, color="k", linestyle="dashed")
+        axis.set_ylim(0, 2)
+        axis.set_title(f"Gradient Norm")
+        fig.tight_layout()
+
+        return fig
+
 
 class Generator(torch.nn.Module):
     """
