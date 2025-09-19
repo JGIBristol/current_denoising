@@ -343,6 +343,12 @@ def train(
     dataloader = config["dataloader"]
     lr = config["learning_rate"]
     d_g_lr_ratio = config["d_g_lr_ratio"]
+    n_epochs = config["n_epochs"]
+    n_critic = config["n_critic"]
+    latent_dim = config["latent_dim"]
+    lambda_gp = config["lambda_gp"]
+    plot_interval = config["plot_interval"]
+    output_dir = config["output_dir"]
 
     # Put things in the right place - TODO this shouldn't be hardcoded
     # Although let's be honest, we don't want to train this on a CPU, so...
@@ -364,11 +370,9 @@ def train(
         feature_dim=1000, model=fid_model, device=device
     )
 
-    training_metrics = GANTrainingMetrics(
-        n_batches=len(dataloader), n_epochs=config["n_epochs"]
-    )
-    for i in tqdm(range(config["n_epochs"])):
-        for imgs in config["dataloader"]:
+    training_metrics = GANTrainingMetrics(n_batches=len(dataloader), n_epochs=n_epochs)
+    for i in tqdm(range(n_epochs)):
+        for imgs in dataloader:
             batch_size = imgs.shape[0]
 
             # Ground truth labels
@@ -384,13 +388,13 @@ def train(
             w_accum = 0.0
             gp_accum = 0.0
             interp_grad_accum = 0.0
-            for j, _ in enumerate(range(config["n_critic"])):
+            for j, _ in enumerate(range(n_critic)):
                 optimizer_d.zero_grad()
 
                 # Generate some fake images for discriminator training
                 z_d = Variable(
                     torch.cuda.FloatTensor(
-                        np.random.normal(0, 1, (batch_size, config["latent_dim"]))
+                        np.random.normal(0, 1, (batch_size, latent_dim))
                     )
                 )
                 gen_imgs_d = generator(z_d)
@@ -405,7 +409,7 @@ def train(
                     discriminator, real_imgs.data, gen_imgs_d.data, alpha
                 )
                 d_obj = fake_loss.mean() - real_loss.mean()
-                d_loss = d_obj + config["lambda_gp"] * gp
+                d_loss = d_obj + lambda_gp * gp
 
                 d_loss.backward()
                 optimizer_d.step()
@@ -414,18 +418,16 @@ def train(
                 gp_accum += gp.detach().item()
                 interp_grad_accum += grad_norm.detach().item()
 
-            current_w = w_accum / config["n_critic"]
-            current_gp = gp_accum / config["n_critic"]
-            current_grad_norm = interp_grad_accum / config["n_critic"]
+            current_w = w_accum / n_critic
+            current_gp = gp_accum / n_critic
+            current_grad_norm = interp_grad_accum / n_critic
 
             #  Train Generator
             optimizer_g.zero_grad()
 
             # Generate a batch of images
             z_g = Variable(
-                torch.cuda.FloatTensor(
-                    np.random.normal(0, 1, (batch_size, config["latent_dim"]))
-                )
+                torch.cuda.FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim)))
             )
             gen_imgs_g = generator(z_g)
 
@@ -464,9 +466,9 @@ def train(
         g_grads.append(g_grad_norm)
         d_grads.append(d_grad_norm)
 
-        if not i % config["plot_interval"]:
+        if not i % plot_interval:
             # Save the most recent batch of fake images
-            out_dir = config["output_dir"] / f"epoch_{i}"
+            out_dir = output_dir / f"epoch_{i}"
             out_dir.mkdir(parents=True, exist_ok=True)
 
             # Rescale from [-1, 1] to [0, 1]
@@ -475,7 +477,7 @@ def train(
                 gen_imgs_g.data,
                 out_dir / "fake_images.png",
                 normalize=False,
-                nrow=int(np.sqrt(config["batch_size"])),
+                nrow=int(np.sqrt(batch_size)),
             )
 
             # FID
@@ -486,9 +488,7 @@ def train(
                     # Generate some images
                     z = Variable(
                         torch.cuda.FloatTensor(
-                            np.random.normal(
-                                0, 1, (config["batch_size"], config["latent_dim"])
-                            )
+                            np.random.normal(0, 1, (batch_size, latent_dim))
                         )
                     )
                     gen_imgs_g = generator(z)
@@ -496,7 +496,7 @@ def train(
                     gen_imgs_g = _to_rgb(gen_imgs_g).cuda().float()
 
                     # Get some real images
-                    real_imgs = next(iter(config["dataloader"])).cuda()
+                    real_imgs = next(iter(dataloader)).cuda()
                     real_imgs = (real_imgs + 1) / 2
                     real_imgs = _to_rgb(real_imgs).cuda().float()
 
