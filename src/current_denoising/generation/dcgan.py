@@ -2,6 +2,8 @@
 Deep convolutional GAN (DCGAN) implementation
 """
 
+from typing import NamedTuple
+
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -55,6 +57,18 @@ class TileLoader(torch.utils.data.Dataset):
     def __getitem__(self, idx: int):
         """Get a training patch"""
         return torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
+
+
+class GANHyperParams(NamedTuple):
+    """
+    Hyperparameters for GAN training
+    """
+
+    n_epochs: int
+    lr: float
+    d_g_lr_ratio: float
+    n_critic: int
+    lambda_gp: float
 
 
 class GANTrainingMetrics:
@@ -344,29 +358,21 @@ def train(
     generator: Generator,
     discriminator: Discriminator,
     dataloader: torch.utils.data.DataLoader,
-    config: dict,
+    hyperparams: GANHyperParams,
+    device: str,
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
     Train a new GAN
 
     :param generator: a generator model
     :param discriminator: classifies images as real or fake
-    :param config: configuration dictionary - see `gan.ipynb` for what it should contain.
-                   TODO neaten, probably just pass straight options
+    :param dataloader: dataloader for the training data
+    :param device: device to use for training - i.e. "cpu" or "cuda
 
     :return: trained generator
     :return: trained discriminator
     :return: GAN training metrics
     """
-    # Hyperparameters
-    # TODO - should be an object
-    n_epochs = config["n_epochs"]
-    latent_dim = config["latent_dim"]
-    lr = config["learning_rate"]
-    d_g_lr_ratio = config["d_g_lr_ratio"]
-    n_critic = config["n_critic"]
-    lambda_gp = config["lambda_gp"]
-
     # Other stuff
     # TODO - should just be inputs
     plot_interval = config["plot_interval"]
@@ -380,9 +386,13 @@ def train(
 
     # Set up optimisers
     betas = (0.0, 0.9)
-    optimizer_g = torch.optim.Adam(generator.parameters(), lr=lr, betas=betas)
+    optimizer_g = torch.optim.Adam(
+        generator.parameters(), lr=hyperparams.lr, betas=betas
+    )
     optimizer_d = torch.optim.Adam(
-        discriminator.parameters(), lr=d_g_lr_ratio, betas=betas
+        discriminator.parameters(),
+        lr=hyperparams.lr / hyperparams.d_g_lr_ratio,
+        betas=betas,
     )
 
     # We'll be tracking training using the FID score, so set that up here too
@@ -393,15 +403,19 @@ def train(
     )
 
     n_batches = len(dataloader)
-    training_metrics = GANTrainingMetrics(n_batches=n_batches, n_epochs=n_epochs)
+    training_metrics = GANTrainingMetrics(
+        n_batches=n_batches, n_epochs=hyperparams.n_epochs
+    )
 
     # Pre-generate weights for interpolation between real and fake samples when we do the
     # gradient penalty
     batch_size = dataloader.batch_size
     alphas = torch.rand(
-        (n_epochs, n_critic, batch_size, 1, 1, 1), device=device, requires_grad=False
+        (hyperparams.n_epochs, hyperparams.n_critic, batch_size, 1, 1, 1),
+        device=device,
+        requires_grad=False,
     )
-    for epoch in tqdm(range(n_epochs)):
+    for epoch in tqdm(range(hyperparams.n_epochs)):
         for batch, imgs in enumerate(dataloader):
             imgs = imgs.to(device)
             batch_size = imgs.shape[0]
@@ -420,7 +434,7 @@ def train(
             w_accum = 0.0
             gp_accum = 0.0
             interp_grad_accum = 0.0
-            for i in range(n_critic):
+            for i in range(hyperparams.n_critic):
                 optimizer_d.zero_grad()
 
                 # Generate some fake images for discriminator training
@@ -437,7 +451,7 @@ def train(
                     discriminator, imgs.data, gen_imgs_d.data, alphas[epoch, i]
                 )
                 d_obj = fake_loss.mean() - real_loss.mean()
-                d_loss = d_obj + lambda_gp * gp
+                d_loss = d_obj + hyperparams.lambda_gp * gp
 
                 d_loss.backward()
                 optimizer_d.step()
@@ -446,9 +460,9 @@ def train(
                 gp_accum += gp.detach().item()
                 interp_grad_accum += grad_norm.detach().item()
 
-            current_w = w_accum / n_critic
-            current_gp = gp_accum / n_critic
-            current_grad_norm = interp_grad_accum / n_critic
+            current_w = w_accum / hyperparams.n_critic
+            current_gp = gp_accum / hyperparams.n_critic
+            current_grad_norm = interp_grad_accum / hyperparams.n_critic
 
             #  Train Generator
             # TODO wrapper
