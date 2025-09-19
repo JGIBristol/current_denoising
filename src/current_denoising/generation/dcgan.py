@@ -377,11 +377,16 @@ def train(
     )
 
     training_metrics = GANTrainingMetrics(n_batches=len(dataloader), n_epochs=n_epochs)
-    for i in tqdm(range(n_epochs)):
-        for imgs in dataloader:
+
+    # TODO - Pre-generate alphas for interpolation between real and fake samples
+    # This requires us to know the image size, n_critic
+    # Should be shape (n_epoch, n_critic, n_batch, 1, 1, 1) and on the device
+    for epoch in tqdm(range(n_epochs)):
+        for batch, imgs in enumerate(dataloader):
             batch_size = imgs.shape[0]
 
             # Ground truth labels
+            # TODO should be better - use better API than Variable/FloatTensor
             real_labels = Variable(
                 torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
             )
@@ -391,6 +396,7 @@ def train(
             real_imgs = Variable(imgs.type(torch.cuda.FloatTensor))
 
             # Train Discriminator first
+            # TODO function for this
             w_accum = 0.0
             gp_accum = 0.0
             interp_grad_accum = 0.0
@@ -398,6 +404,8 @@ def train(
                 optimizer_d.zero_grad()
 
                 # Generate some fake images for discriminator training
+                # TODO - dont use Variable/FloatTensor
+                # TODO - helper function to just generate an image
                 z_d = Variable(
                     torch.cuda.FloatTensor(
                         np.random.normal(0, 1, (batch_size, latent_dim))
@@ -410,6 +418,7 @@ def train(
                 real_loss = discriminator(real_imgs)
                 fake_loss = discriminator(gen_imgs_d.detach())
 
+                # Gradient penalty
                 alpha = torch.rand(real_imgs.size(0), 1, 1, 1, device=real_imgs.device)
                 gp, grad_norm = _gradient_penalty(
                     discriminator, real_imgs.data, gen_imgs_d.data, alpha
@@ -429,15 +438,15 @@ def train(
             current_grad_norm = interp_grad_accum / n_critic
 
             #  Train Generator
+            # TODO wrapper
             optimizer_g.zero_grad()
 
             # Generate a batch of images
+            # Now we do want to update the generator, so don't detatch
             z_g = Variable(
                 torch.cuda.FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim)))
             )
             gen_imgs_g = generator(z_g)
-
-            # Now we do want to update the generator, so don't detatch
             g_loss = -discriminator(gen_imgs_g).mean()
 
             g_loss.backward()
@@ -449,6 +458,8 @@ def train(
             gps[-1].append(current_gp)
             grad_norms[-1].append(current_grad_norm)
 
+        # Find the parameter gradients (i.e. how big the update step was this epoch)
+        # TODO helper...
         g_grad_norm = torch.norm(
             torch.stack(
                 [
@@ -472,9 +483,10 @@ def train(
         g_grads.append(g_grad_norm)
         d_grads.append(d_grad_norm)
 
-        if not i % plot_interval:
+        # Possibly plot this epoch
+        if not epoch % plot_interval:
             # Save the most recent batch of fake images
-            out_dir = output_dir / f"epoch_{i}"
+            out_dir = output_dir / f"epoch_{epoch}"
             out_dir.mkdir(parents=True, exist_ok=True)
 
             # Rescale from [-1, 1] to [0, 1]
@@ -546,6 +558,7 @@ def generate_tiles(
         raise GenerationError("device must be 'cpu' or 'cuda'")
 
     generator.eval()
+    # TODO make this use the generation helper
     latent_dim = generator.l1[0].in_features
 
     with torch.no_grad():
