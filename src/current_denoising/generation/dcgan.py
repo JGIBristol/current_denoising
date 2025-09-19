@@ -225,6 +225,39 @@ class GANTrainingMetrics:
 
         return fig
 
+    def plot_param_gradients(self, d_g_lr_ratio: float) -> plt.Figure:
+        """
+        Plot the gradients of the models wrt their parameters, and their ratio
+        (scaled by the d_g_lr_ratio hyperparameter).
+
+        :param d_g_lr_ratio: the d_g_lr_ratio hyperparameter used during training;
+                             this is the factor by which the critic's learning rate
+                             is less than the generator
+
+        """
+        fig, axes = plt.subplots(2, 1, figsize=(15, 5))
+        axes[0].plot(
+            self.generator_param_gradients, label="Generator Gradients", color="C0"
+        )
+        axes[0].plot(
+            self.critic_param_gradients, label="Discriminator Gradients", color="C1"
+        )
+        axes[1].plot(
+            d_g_lr_ratio * self.generator_param_gradients / self.critic_param_gradients,
+            color="C2",
+            label="ratio",
+        )
+        axes[1].set_title("d_g_lr_ratio * G / D gradients")
+        axes[1].axhline(0.8, color="k", linestyle="dashed")
+        axes[1].axhline(1.2, color="k", linestyle="dashed")
+        axes[1].set_ylim(0, 2)
+        for axis in axes:
+            axis.legend()
+
+        fig.tight_layout()
+
+        return fig
+
 
 class Generator(torch.nn.Module):
     """
