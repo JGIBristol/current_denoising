@@ -381,7 +381,8 @@ def train(
 
     training_metrics = GANTrainingMetrics(n_batches=n_batches, n_epochs=n_epochs)
 
-    # Pre-generate weights for interpolation between real and fake samples
+    # Pre-generate weights for interpolation between real and fake samples when we do the
+    # gradient penalty
     alphas = torch.rand(
         (n_epochs, n_critic, batch_size, 1, 1, 1), device=device, requires_grad=False
     )
@@ -410,10 +411,8 @@ def train(
                 # Generate some fake images for discriminator training
                 # TODO - dont use Variable/FloatTensor
                 # TODO - helper function to just generate an image
-                z_d = Variable(
-                    torch.cuda.FloatTensor(
-                        np.random.normal(0, 1, (batch_size, latent_dim))
-                    )
+                z_d = torch.randn(
+                    batch_size, latent_dim, device=device, dtype=torch.float32
                 )
                 gen_imgs_d = generator(z_d)
 
