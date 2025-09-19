@@ -6,12 +6,14 @@ import pathlib
 from typing import NamedTuple
 
 import torch
-from torch.autograd import Variable
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 from torchvision.models import resnet18, ResNet18_Weights
 from torcheval.metrics import FrechetInceptionDistance
+
+from ..plotting import training
 
 
 class DataError(Exception):
@@ -91,8 +93,11 @@ class GANTrainingMetrics:
         self.critic_losses = np.zeros((n_epochs, n_batches))
         """Critic losses per epoch; shape (n_epochs, n_batches)"""
 
-        self.fid_scores = np.zeros(n_epochs)
-        """FID scores per epoch; shape (n_epochs,)"""
+        self.fid_scores = np.ones(n_epochs) * np.nan
+        """
+        FID scores per epoch.
+        We only plot every `plot_interval` epochs, so many of these will remain NaN.
+        """
 
         self.wasserstein_dists = np.zeros((n_epochs, n_batches))
         """Wasserstein distances per epoch; shape (n_epochs, n_batches)"""
@@ -133,6 +138,34 @@ class GANTrainingMetrics:
         I really understand this...
 
         """
+
+    def plot_scores(self) -> plt.Figure:
+        """
+        Plot the model losses and FID score across training epochs.
+
+        Creates a new figure containing two axes; one for the generator and critic
+        losses, one for the FID score. Does not display, save or apply tight_layout.
+
+        :param plot_interval: interval (in epochs) at which the FID was computed.
+        :return: a new matplotlib figure
+        """
+        fig, axes = plt.subplots(2, 1, figsize=(15, 5), sharex=True)
+
+        training.plot_losses(
+            self.gen_losses,
+            self.critic_losses,
+            labels=("Generator Loss", "Discriminator Loss"),
+            axis=axes[0],
+        )
+        axes[0].set_title("Losses")
+
+        # The FID scores will be full of NaNs since we don't compute it every epoch
+        indices = np.arange(len(self.fid_scores))
+        keep = ~np.isnan(self.fid_scores)
+        axes[1].plot(indices[keep], self.fid_scores[keep], color="C1")
+        axes[1].set_title("FID Score")
+
+        return fig
 
 
 class Generator(torch.nn.Module):
