@@ -425,14 +425,13 @@ def train(
                 optimizer_d.zero_grad()
 
                 # Generate some fake images for discriminator training
-                # TODO - dont use Variable/FloatTensor
-                # TODO - helper function to just generate an image
-                gen_imgs_d = _gen_imgs(generator, batch_size, device)
+                # Detach since we don't want to propagate through the generator
+                gen_imgs_d = _gen_imgs(generator, batch_size, device).detach()
 
                 # detatch the generator output to avoid backpropagating through it
                 # we don't want to update the generator during discriminator training
                 real_loss = discriminator(imgs)
-                fake_loss = discriminator(gen_imgs_d.detach())
+                fake_loss = discriminator(gen_imgs_d)
 
                 # Gradient penalty
                 gp, grad_norm = _gradient_penalty(
@@ -458,10 +457,7 @@ def train(
 
             # Generate a batch of images
             # Now we do want to update the generator, so don't detatch
-            z_g = Variable(
-                torch.cuda.FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim)))
-            )
-            gen_imgs_g = generator(z_g)
+            gen_imgs_g = _gen_imgs(generator, batch_size, device)
             g_loss = -discriminator(gen_imgs_g).mean()
 
             g_loss.backward()
@@ -518,13 +514,9 @@ def train(
             generator.eval()
             with torch.no_grad():
                 for _ in range(16):
-                    # Generate some images
-                    z = Variable(
-                        torch.cuda.FloatTensor(
-                            np.random.normal(0, 1, (batch_size, latent_dim))
-                        )
-                    )
-                    gen_imgs_g = generator(z)
+                    # Generate some images, scale them and convert to RGB
+                    # TODO i think this is wrong
+                    gen_imgs_g = _gen_imgs(generator, batch_size, device)
                     gen_imgs_g = (gen_imgs_g + 1) / 2
                     gen_imgs_g = _to_rgb(gen_imgs_g).cuda().float()
 
