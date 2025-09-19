@@ -387,17 +387,17 @@ def train(
     )
     for epoch in tqdm(range(n_epochs)):
         for batch, imgs in enumerate(dataloader):
+            imgs = imgs.to(device)
             batch_size = imgs.shape[0]
 
             # Ground truth labels
             # TODO should be better - use better API than Variable/FloatTensor
-            real_labels = Variable(
-                torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False
-            )
-            fake_labels = Variable(
-                torch.cuda.FloatTensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False
-            )
-            real_imgs = Variable(imgs.type(torch.cuda.FloatTensor))
+            real_labels = torch.tensor(
+                (imgs.shape[0], 1), dtype=torch.float32, device=device
+            ).fill_(1.0)
+            fake_labels = torch.tensor(
+                (imgs.shape[0], 1), dtype=torch.float32, device=device
+            ).fill_(0.0)
 
             # Train Discriminator first
             # TODO function for this
@@ -419,12 +419,12 @@ def train(
 
                 # detatch the generator output to avoid backpropagating through it
                 # we don't want to update the generator during discriminator training
-                real_loss = discriminator(real_imgs)
+                real_loss = discriminator(imgs)
                 fake_loss = discriminator(gen_imgs_d.detach())
 
                 # Gradient penalty
                 gp, grad_norm = _gradient_penalty(
-                    discriminator, real_imgs.data, gen_imgs_d.data, alphas[epoch, i]
+                    discriminator, imgs.data, gen_imgs_d.data, alphas[epoch, i]
                 )
                 d_obj = fake_loss.mean() - real_loss.mean()
                 d_loss = d_obj + lambda_gp * gp
@@ -517,6 +517,7 @@ def train(
                     gen_imgs_g = _to_rgb(gen_imgs_g).cuda().float()
 
                     # Get some real images
+                    # TODO i think this is wrong
                     real_imgs = next(iter(dataloader)).cuda()
                     real_imgs = (real_imgs + 1) / 2
                     real_imgs = _to_rgb(real_imgs).cuda().float()
