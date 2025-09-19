@@ -86,6 +86,9 @@ class GANTrainingMetrics:
     def __init__(self, n_batches: int, n_epochs: int):
         """
         Initialise empty arrays
+
+        Sets most arrays to 0s, but the FID scores to NaN since some will be
+        missing - we won't compute the FID every epoch.
         """
         self.gen_losses = np.zeros((n_epochs, n_batches))
         """Generator losses per epoch; shape (n_epochs, n_batches)"""
@@ -164,6 +167,61 @@ class GANTrainingMetrics:
         keep = ~np.isnan(self.fid_scores)
         axes[1].plot(indices[keep], self.fid_scores[keep], color="C1")
         axes[1].set_title("FID Score")
+
+        return fig
+
+    def plot_param_gradients(self, lambda_gp: float) -> plt.Figure:
+        """
+        Plot the generator and critic parameter gradients across training epochs
+        and their ratio.
+
+        Creates a new figure containing two axes; one for the generator and critic
+        parameter gradients, and one for their ratio.
+        We expect the generator gradients to be smaller than the critic gradients,
+        lying between 0.1 and 0.6 ish.
+
+        :param lambda_gp: the lambda_gp hyperparameter used during training; used to scale the
+                          gradient penalty during the critic update.
+        """
+        fig, axes = plt.subplots(2, 1, figsize=(15, 5))
+
+        scaled_gps = lambda_gp * self.gradient_penalties
+
+        x = np.arange(len(scaled_gps))
+        axes[0].plot(x, scaled_gps.mean(axis=1), label="Gradient Penalty")
+        axes[0].fill_between(
+            x, scaled_gps.min(axis=1), scaled_gps.max(axis=1), alpha=0.2
+        )
+        axes[0].plot(
+            x, self.wasserstein_dists.mean(axis=1), label="Wasserstein Distance"
+        )
+        axes[0].fill_between(
+            x,
+            self.wasserstein_dists.min(axis=1),
+            self.wasserstein_dists.max(axis=1),
+            alpha=0.2,
+        )
+
+        axes[1].plot(
+            scaled_gps.mean(axis=1) / self.wasserstein_dists.mean(axis=1),
+            label=r"$\lambda \times$GP / WD",
+            color="C2",
+        )
+        axes[1].axhline(
+            0.1,
+            color="k",
+            linestyle="--",
+        )
+        axes[1].axhline(
+            0.6,
+            color="k",
+            linestyle="--",
+        )
+        axes[1].set_ylim(-3, 3)
+
+        axes[1].set_title("Ratio; high -> GP dominates, low -> WD dominates")
+        axes[0].legend()
+        fig.tight_layout()
 
         return fig
 
