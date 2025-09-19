@@ -2,6 +2,8 @@
 Deep convolutional GAN (DCGAN) implementation
 """
 
+from typing import NamedTuple
+
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -55,6 +57,64 @@ class TileLoader(torch.utils.data.Dataset):
     def __getitem__(self, idx: int):
         """Get a training patch"""
         return torch.tensor(self.images[idx], dtype=torch.float32).unsqueeze(0)
+
+
+class GANTrainingMetrics(NamedTuple):
+    """
+    The metrics collected during GAN training
+
+    Useful for illustrating the performance of the GAN and for reporting, diagnosis,
+    optimisation etc. See the attributues for a list of the metrics collected.
+    """
+
+    gen_losses: np.ndarray
+    """Generator losses per epoch; shape (n_epochs, n_batches)"""
+
+    critic_losses: np.ndarray
+    """Critic losses per epoch; shape (n_epochs, n_batches)"""
+
+    fid_scores: np.ndarray
+    """FID scores per epoch; shape (n_epochs,)"""
+
+    wasserstein_dists: np.ndarray
+    """Wasserstein distances per epoch; shape (n_epochs, n_batches)"""
+
+    gradient_penalties: np.ndarray
+    """Gradient penalties per epoch; shape (n_epochs, n_batches)"""
+
+    generator_param_gradients: np.ndarray
+    """
+    Average generator gradient norms per epoch; shape (n_epochs,)
+
+    This is the gradient of the generator's parameters (after the update step).
+    Tells us the strength of the generator's update signal.
+    """
+
+    critic_param_gradients: np.ndarray
+    """
+    Average critic gradient norms per epoch; shape (n_epochs,).
+
+    This is the gradient of the critic's parameters (after the update step).
+    Tells us the strength of the critic's update signal.
+    """
+
+    critic_interp_grad_norms: np.ndarray
+    """
+    Average gradient norms for the interpolated samples used in the gradient penalty
+    shape (n_epochs, n_batches)
+
+    This is a data gradient, not a parameter gradient; tells us how much the critic's
+    output changes with a small perturbation of the input images.
+    We want this to be 1 here - if the norm is much larger than 1, the generator
+    will not be able to learn from the critic's output (since small changes in the input
+    massively change its decision); if it's much smaller than 1, the critic is not sensitive
+    enough to the input, and again the generator will struggle to learn because it can make
+    big changes without being punished.
+    If you want to know why this should be around 1 (and not some other number),
+    read about Kantorovich-Rubinstein duality and 1-Lipschitz functions, but I don't think
+    I really understand this...
+
+    """
 
 
 class Generator(torch.nn.Module):
