@@ -381,9 +381,7 @@ def train(
 
     training_metrics = GANTrainingMetrics(n_batches=n_batches, n_epochs=n_epochs)
 
-    # TODO - Pre-generate alphas for interpolation between real and fake samples
-    # This requires us to know the image size, n_critic
-    # Should be shape (n_epoch, n_critic, n_batch, 1, 1, 1) and on the device
+    # Pre-generate weights for interpolation between real and fake samples
     alphas = torch.rand(
         (n_epochs, n_critic, batch_size, 1, 1, 1), device=device, requires_grad=False
     )
