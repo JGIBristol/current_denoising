@@ -15,7 +15,6 @@ from torchvision.models import inception_v3, Inception_V3_Weights
 from torchvision.models.feature_extraction import create_feature_extractor
 import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
-from torcheval.metrics import FrechetInceptionDistance
 
 from ..plotting import training
 
@@ -94,7 +93,6 @@ class GANHyperParams(NamedTuple):
     d_g_lr_ratio: float
     n_critic: int
     lambda_gp: float
-    n_fid_batches: int
     generator_latent_dim: int
     n_discriminator_blocks: int
 
@@ -111,20 +109,12 @@ class GANTrainingMetrics:
         """
         Initialise empty arrays
 
-        Sets most arrays to 0s, but the FID scores to NaN since some will be
-        missing - we won't compute the FID every epoch.
         """
         self.gen_losses = np.zeros((n_epochs, n_batches))
         """Generator losses per epoch; shape (n_epochs, n_batches)"""
 
         self.critic_losses = np.zeros((n_epochs, n_batches))
         """Critic losses per epoch; shape (n_epochs, n_batches)"""
-
-        self.fid_scores = np.ones(n_epochs) * np.nan
-        """
-        FID scores per epoch.
-        We only plot every `plot_interval` epochs, so many of these will remain NaN.
-        """
 
         self.wasserstein_dists = np.zeros((n_epochs, n_batches))
         """Wasserstein distances per epoch; shape (n_epochs, n_batches)"""
@@ -168,29 +158,22 @@ class GANTrainingMetrics:
 
     def plot_scores(self) -> plt.Figure:
         """
-        Plot the model losses and FID score across training epochs.
+        Plot the model losses across training epochs.
 
-        Creates a new figure containing two axes; one for the generator and critic
-        losses, one for the FID score. Does not display, save or apply tight_layout.
+        Creates a new figure containing one axis for plotting the generator and criticlosses.
+        Does not display, save or apply tight_layout.
 
-        :param plot_interval: interval (in epochs) at which the FID was computed.
         :return: a new matplotlib figure
         """
-        fig, axes = plt.subplots(2, 1, figsize=(15, 5), sharex=True)
+        fig, axes = plt.subplots(1, 1, figsize=(15, 5), sharex=True)
 
         training.plot_losses(
             self.gen_losses,
             self.critic_losses,
             labels=("Generator Loss", "Discriminator Loss"),
-            axis=axes[0],
+            axis=axis,
         )
-        axes[0].set_title("Losses")
-
-        # The FID scores will be full of NaNs since we don't compute it every epoch
-        indices = np.arange(len(self.fid_scores))
-        keep = ~np.isnan(self.fid_scores)
-        axes[1].plot(indices[keep], self.fid_scores[keep], color="C1")
-        axes[1].set_title("FID Score")
+        axis.set_title("Losses")
 
         return fig
 
@@ -646,7 +629,6 @@ def train(
     dataloader: torch.utils.data.DataLoader,
     hyperparams: GANHyperParams,
     *,
-    fid_interval: int | None = 10,
     output_dir: pathlib.Path | None = None,
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
@@ -655,9 +637,6 @@ def train(
     :param generator: a generator model
     :param discriminator: classifies images as real or fake
     :param dataloader: dataloader for the training data
-    :param fid_interval: interval (in epochs) at which the FID will be computed.
-                          Also sets the interval at which generated images will be saved,
-                          if output_dir is not None. Set to None to not do the FID thing i guess
     :param output_dir: directory to save training plots to. If None, no plots will be saved.
 
     :return: trained generator
@@ -680,31 +659,6 @@ def train(
         discriminator.parameters(),
         lr=hyperparams.lr / hyperparams.d_g_lr_ratio,
         betas=betas,
-    )
-
-    # We'll be tracking training using the FID score, so set that up here too
-    # fid_model = resnet18(weights=ResNet18_Weights.DEFAULT)
-    # fid_model.to(device)
-    # fid_metric = FrechetInceptionDistance(
-    #     feature_dim=1000, model=fid_model, device=device
-    # )
-    inc_w = Inception_V3_Weights.IMAGENET1K_V1
-    # Do not override aux_logits when weights are provided (torchvision enforces True)
-    inc = inception_v3(weights=inc_w).to(device).eval()
-    inc.transform_input = False
-    feat_extractor = (
-        create_feature_extractor(inc, return_nodes={"avgpool": "feat"})
-        .to(device)
-        .eval()
-    )
-
-    mean = torch.tensor(inc_w.transforms().mean, device=device)[None, :, None, None]
-    std = torch.tensor(inc_w.transforms().std, device=device)[None, :, None, None]
-
-    # Fix variable name: use feat_extractor
-    fid_backbone = InceptionPool3(feat_extractor, mean, std).to(device).eval()
-    fid_metric = FrechetInceptionDistance(
-        feature_dim=2048, model=fid_backbone, device=device
     )
 
     n_batches = len(dataloader)
@@ -749,46 +703,6 @@ def train(
         training_metrics.generator_param_gradients[epoch] = _grad_norm(generator)
         training_metrics.critic_param_gradients[epoch] = _grad_norm(discriminator)
 
-        # Evaluate FID and save some images, if desired
-        if fid_interval is not None and epoch % fid_interval:
-            # FID
-            fid_metric.reset()
-            generator.eval()
-            with torch.no_grad():
-                # Iterate distinct real batches; preprocessing is done inside fid_backbone
-                for j, real_imgs in enumerate(dataloader):
-                    if j >= hyperparams.n_fid_batches:
-                        break
-                    real_imgs = real_imgs.to(device)
-                    bs = real_imgs.shape[0]
-                    real01 = (real_imgs + 1) / 2
-                    fake01 = (_gen_imgs(generator, bs) + 1) / 2
-
-                    real01_rgb = _to_rgb(real01)
-                    fake01_rgb = _to_rgb(fake01)
-
-                    fid_metric.update(fake01_rgb, is_real=False)
-                    fid_metric.update(real01_rgb, is_real=True)
-
-            # Save the most recent batch of fake images
-            if output_dir is not None:
-                out_dir = output_dir / f"epoch_{epoch}"
-                out_dir.mkdir(parents=True, exist_ok=True)
-                viz = (
-                    ((_gen_imgs(generator, dataloader.batch_size) + 1) / 2)
-                    .detach()
-                    .cpu()
-                )
-                vutils.save_image(
-                    viz,
-                    out_dir / "fake_images.png",
-                    normalize=False,
-                    nrow=int(np.sqrt(dataloader.batch_size)),
-                )
-
-            training_metrics.fid_scores[epoch] = fid_metric.compute().item()
-            generator.train()
-
     return generator, discriminator, training_metrics
 
 
@@ -798,7 +712,6 @@ def train_new_gan(
     device: str,
     *,
     img_size: int,
-    fid_interval: int = 10,
     output_dir: pathlib.Path | None = None,
 ) -> tuple[Generator, Discriminator, GANTrainingMetrics]:
     """
@@ -807,9 +720,6 @@ def train_new_gan(
     :param dataloader: dataloader for the training data
     :param device: device to use for training - i.e. "cpu" or "cuda".
     :param img_size: size of the images
-    :param fid_interval: interval (in epochs) at which the FID will be computed.
-                          Also sets the interval at which generated images will be saved,
-                          if output_dir is not None.
     :param output_dir: directory to save training plots to. If None, no plots will be saved.
 
     :return: trained generator
@@ -827,7 +737,6 @@ def train_new_gan(
         discriminator,
         dataloader,
         hyperparams,
-        fid_interval=fid_interval,
         output_dir=output_dir,
     )
 
