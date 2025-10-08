@@ -10,9 +10,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import torchvision.utils as vutils
-from torchvision.models import inception_v3, Inception_V3_Weights
-from torchvision.models.feature_extraction import create_feature_extractor
 import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
@@ -89,8 +86,8 @@ class GANHyperParams(NamedTuple):
     """
 
     n_epochs: int
-    lr: float
-    d_g_lr_ratio: float
+    g_lr: float
+    d_lr: float
     n_critic: int
     lambda_gp: float
     generator_latent_dim: int
@@ -165,7 +162,7 @@ class GANTrainingMetrics:
 
         :return: a new matplotlib figure
         """
-        fig, axes = plt.subplots(1, 1, figsize=(15, 5), sharex=True)
+        fig, axis = plt.subplots(1, 1, figsize=(15, 5), sharex=True)
 
         training.plot_losses(
             self.gen_losses,
@@ -177,15 +174,13 @@ class GANTrainingMetrics:
 
         return fig
 
-    def plot_param_gradients(self, lambda_gp: float) -> plt.Figure:
+    def plot_gp_wd_ratio(self, lambda_gp: float) -> plt.Figure:
         """
-        Plot the generator and critic parameter gradients across training epochs
-        and their ratio.
+        Plot the contribution from the gradient penalty and the Wasserstein distance
+        in the discriminator loss.
 
-        Creates a new figure containing two axes; one for the generator and critic
-        parameter gradients, and one for their ratio.
-        We expect the generator gradients to be smaller than the critic gradients,
-        lying between 0.1 and 0.6 ish.
+        Creates a new figure containing two axes; one for the critic loss terms,
+        and one for their ratio.
 
         :param lambda_gp: the lambda_gp hyperparameter used during training; used to scale the
                           gradient penalty during the critic update.
@@ -227,19 +222,19 @@ class GANTrainingMetrics:
         axes[1].set_ylim(-3, 3)
 
         axes[1].set_title("Ratio; high -> GP dominates, low -> WD dominates")
+        axes[1].legend()
         axes[0].legend()
         fig.tight_layout()
 
         return fig
 
-    def plot_param_gradients(self, d_g_lr_ratio: float) -> plt.Figure:
+    def plot_param_gradients(self, g_lr: float, d_lr) -> plt.Figure:
         """
         Plot the gradients of the models wrt their parameters, and their ratio
-        (scaled by the d_g_lr_ratio hyperparameter).
+        (scaled by the ratios of their learning rates).
 
-        :param d_g_lr_ratio: the d_g_lr_ratio hyperparameter used during training;
-                             this is the factor by which the critic's learning rate
-                             is less than the generator
+        :param g_lr: generator learning rate
+        :param d_lr: critic learning rate
 
         """
         fig, axes = plt.subplots(2, 1, figsize=(15, 5))
@@ -250,11 +245,11 @@ class GANTrainingMetrics:
             self.critic_param_gradients, label="Discriminator Gradients", color="C1"
         )
         axes[1].plot(
-            d_g_lr_ratio * self.generator_param_gradients / self.critic_param_gradients,
+            (g_lr * self.generator_param_gradients) / (d_lr * self.critic_param_gradients),
             color="C2",
             label="ratio",
         )
-        axes[1].set_title("d_g_lr_ratio * G / D gradients")
+        axes[1].set_title("G / D gradients (scaled by LR)")
         axes[1].axhline(0.8, color="k", linestyle="dashed")
         axes[1].axhline(1.2, color="k", linestyle="dashed")
         axes[1].set_ylim(0, 2)
@@ -653,11 +648,11 @@ def train(
     # Set up optimisers
     betas = (0.0, 0.9)
     optimizer_g = torch.optim.Adam(
-        generator.parameters(), lr=hyperparams.lr, betas=betas
+        generator.parameters(), lr=hyperparams.g_lr, betas=betas
     )
     optimizer_d = torch.optim.Adam(
         discriminator.parameters(),
-        lr=hyperparams.lr / hyperparams.d_g_lr_ratio,
+        lr=hyperparams.d_lr,
         betas=betas,
     )
 
