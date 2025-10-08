@@ -219,7 +219,7 @@ class GANTrainingMetrics:
             color="k",
             linestyle="--",
         )
-        axes[1].set_ylim(-3, 3)
+        axes[1].set_ylim(-0.5, 2)
 
         axes[1].set_title("Ratio; high -> GP dominates, low -> WD dominates")
         axes[1].legend()
