@@ -245,7 +245,8 @@ class GANTrainingMetrics:
             self.critic_param_gradients, label="Discriminator Gradients", color="C1"
         )
         axes[1].plot(
-            (g_lr * self.generator_param_gradients) / (d_lr * self.critic_param_gradients),
+            (g_lr * self.generator_param_gradients)
+            / (d_lr * self.critic_param_gradients),
             color="C2",
             label="ratio",
         )
