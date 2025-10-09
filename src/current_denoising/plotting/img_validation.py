@@ -57,11 +57,13 @@ def hist(batch: torch.Tensor, axis: plt.Axes = None, **hist_kw) -> plt.Figure:
     return axis.figure
 
 
-def fft(batch: torch.Tensor, axis: plt.Axes = None) -> plt.Figure:
+def fft(batch: torch.Tensor, axis: plt.Axes = None) -> tuple[plt.Figure, np.ndarray]:
     """
     Plot the average FFT magnitude of the batch of images
 
     This is useful for visualising the frequency content of the images.
+
+    Returns the figure + FFT image
     """
     new_axis = axis is None
     if new_axis:
@@ -95,4 +97,4 @@ def fft(batch: torch.Tensor, axis: plt.Axes = None) -> plt.Figure:
     if new_axis:
         fig.colorbar(axis.images[0], ax=axis, orientation="vertical")
 
-    return axis.figure
+    return axis.figure, fft_avg

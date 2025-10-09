@@ -219,7 +219,7 @@ class GANTrainingMetrics:
             color="k",
             linestyle="--",
         )
-        axes[1].set_ylim(-3, 3)
+        axes[1].set_ylim(-0.5, 2)
 
         axes[1].set_title("Ratio; high -> GP dominates, low -> WD dominates")
         axes[1].legend()
@@ -245,7 +245,8 @@ class GANTrainingMetrics:
             self.critic_param_gradients, label="Discriminator Gradients", color="C1"
         )
         axes[1].plot(
-            (g_lr * self.generator_param_gradients) / (d_lr * self.critic_param_gradients),
+            (g_lr * self.generator_param_gradients)
+            / (d_lr * self.critic_param_gradients),
             color="C2",
             label="ratio",
         )
