@@ -9,7 +9,6 @@ authors = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "metview>=1.16.2",
 ]
 
 [tool.uv]
