@@ -5,6 +5,9 @@ General utilities
 import functools
 import numpy as np
 
+KM_PER_DEG = 111.32
+"""Size of a degree on the grid (at the equator) in km"""
+
 
 class LatLongError(Exception):
     """General exception for latitude/longitude calculation errors"""
@@ -113,3 +116,17 @@ def lat_long_grid(img_shape: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     ), np.linspace(
         -180 + long_point_size / 2, 180 - long_point_size / 2, width, endpoint=True
     )
+
+
+def cos_latitudes(n_points: int) -> np.ndarray:
+    """
+    Given a number of latitude points to cover the Earth, find the cosine of each of these latitudes.
+
+    E.g. if we pass 720 (for a quarter-degree grid), returns cos(-90+1/8 deg), ... , cos(90-1/8deg)
+
+    :param n_points: number of points in the second axis of a gridded field (i.e., number of latitude points)
+    :return: cosine of all the latitudes
+    """
+    lat, _ = lat_long_grid((n_points, 1))
+
+    return np.cos(np.deg2rad(lat))

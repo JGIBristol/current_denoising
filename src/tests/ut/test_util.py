@@ -149,3 +149,18 @@ def test_tile(image):
     expected_tile = np.array([[10, 11], [18, 19]])
 
     assert np.array_equal(util.tile(image, (1, 2), 2), expected_tile)
+
+
+def test_cos_latitude():
+    """
+    Check we get the right cosine latitudes from a grid's size
+    """
+    # Try it for a quarter degree grid
+    start_lat = np.deg2rad(-90 + 1 / 8)
+    n_points = 720
+
+    latitudes = np.linspace(start_lat, -start_lat, n_points, endpoint=True)
+
+    np.testing.assert_array_almost_equal(
+        np.cos(latitudes), util.cos_latitudes(n_points)
+    )

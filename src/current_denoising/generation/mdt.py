@@ -4,6 +4,9 @@ Utilities for dealing with the MDT directly
 
 import numpy as np
 from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import gaussian_filter1d
+
+from ..utils import util
 
 
 class MDTError(Exception):
@@ -48,3 +51,40 @@ def fill_nan_with_nearest(input_arr: np.ndarray) -> np.ndarray:
     filled = input_arr.copy()
     filled[nan_mask] = input_arr[tuple(indices[:, nan_mask])]
     return filled
+
+
+def gauss_smooth(grid: np.ndarray, kernel_size_km: float) -> np.ndarray:
+    """
+    Approximately smooth a grid with the provided kernel size in km.
+    Assumes the grid is a global gridded field (i.e. corresponds to a full 180 degrees of latitude, and 360 of longitude)
+
+    Uses a variable-sized kernel that shrinks near the poles to try to maintain an equal spatial size
+    as latitude varies. This is not exact - the shape of the kernel will be distorted, especially near the poles,
+    as the kernel is radially symmetric on the Cartesian grid, but it should be good enough for our purposes.
+
+    To smooth grids containing NaNs, consider using `fill_nan_with_nearest` first.
+
+    :param grid: the grid to smooth
+    :param kernel_size: the width of the Gaussian kernel in km.
+
+    :return: the smoothed grid.
+
+    """
+    lats, longs = util.lat_long_grid(grid.shape)
+
+    dlat = lats[1] - lats[0]
+    dlong = longs[1] - longs[0]
+
+    sigma_lat = kernel_size_km / (util.KM_PER_DEG * dlat)
+    sigma_long = kernel_size_km / (
+        util.KM_PER_DEG * dlong * util.cos_latitudes(grid.shape[0])
+    )
+    assert len(sigma_long) == grid.shape[0], f"{len(sigma_long)}, {grid.shape=}"
+
+    tmp = gaussian_filter1d(grid, sigma=sigma_lat, axis=0, mode="wrap")
+
+    smoothed = np.empty_like(grid)
+    for i, sigma in enumerate(sigma_long):
+        smoothed[i, :] = gaussian_filter1d(tmp[i, :], sigma=sigma, mode="wrap")
+
+    return smoothed
