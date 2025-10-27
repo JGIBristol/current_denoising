@@ -298,42 +298,47 @@ class Generator(torch.nn.Module):
     deep-ocean patches of satellite data, such that the slowly-varying
     signal is not learned, but the small-scale noise is.
 
-    Assumes the input images have 1 channel.
+    Assumes the input images have a spatial size of 1 and many channels;
+    learns to scale the input up from 1x1 to the desired output size
 
     """
 
-    def __init__(self, img_size: int, latent_dim: int):
+    def __init__(self, img_size: int, latent_channels: int):
         """
         defines the architecture
 
         :param img_size: size of the generated image (assumed square).
                          Must be a power of 2.
-        :latent_dim: dimension of the input noise vector
+        :param latent_channels: number of channels in the input noise map
         """
-        self.latent_dim = latent_dim
+        self.latent_channels = latent_channels
 
         # Other things that I might want to make configurable later
-        self.init_size = 4
         self.base_channels = 128
 
-        # Our generator starts by projecting the latent space into a
-        # small, low-res feature map
-        num_upsamples = int(np.log2(img_size) - np.log2(self.init_size))
-        if (2**num_upsamples * self.init_size) != img_size:
+        # Our generator starts by projecting a high-channel, 1x1 image into a small
+        # low-res feature map
+        num_upsamples = int(np.log2(img_size))
+        if 2**num_upsamples != img_size:
             raise ModelError(f"img_size must be a power of 2; got {img_size}")
 
         super().__init__()
 
-        # Project the latent space into a small feature map
+        # Initial conv to process the noise map
         self.l1 = torch.nn.Sequential(
-            torch.nn.Linear(self.latent_dim, self.base_channels * self.init_size**2)
+            torch.nn.Conv2d(
+                self.latent_channels,
+                self.base_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            ),
+            torch.nn.BatchNorm2d(self.base_channels),
+            torch.nn.ReLU(inplace=True),
         )
 
         # Build up convolutional blocks
-        blocks = [
-            torch.nn.BatchNorm2d(self.base_channels),
-            torch.nn.ReLU(inplace=True),
-        ]
+        blocks = []
 
         in_channels = self.base_channels
         for k in range(num_upsamples - 1):
@@ -361,7 +366,6 @@ class Generator(torch.nn.Module):
     def forward(self, z):
         """Generate an image from noise vector z"""
         out = self.l1(z)
-        out = out.view(out.shape[0], self.base_channels, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
 
@@ -474,7 +478,7 @@ def _to_rgb(images: torch.Tensor) -> torch.Tensor:
     return images.repeat(1, 3, 1, 1)
 
 
-def _gen_imgs(generator: Generator, batch_size: int) -> torch.Tensor:
+def _gen_imgs(generator: Generator, batch_size: int, noise_size: int) -> torch.Tensor:
     """
     Generate a batch of images from the generator.
 
@@ -483,12 +487,15 @@ def _gen_imgs(generator: Generator, batch_size: int) -> torch.Tensor:
 
     :param generator: the generator model
     :param batch_size: number of images to generate
+    :param noise_size: spatial size of the input noise map
 
     :return: a (batch_size, 1, H, W) tensor of generated images
     """
     z_d = torch.randn(
         batch_size,
-        generator.latent_dim,
+        generator.latent_channels,
+        noise_size,
+        noise_size,
         device=_get_device(generator),
         dtype=torch.float32,
     )
@@ -551,7 +558,8 @@ def _train_critic(
 
         # Generate some fake images for discriminator training
         # Detach since we don't want to propagate through the generator
-        gen_imgs_d = _gen_imgs(generator, batch_size).detach()
+        # input size of 1 during training
+        gen_imgs_d = _gen_imgs(generator, batch_size, 1).detach()
 
         # detatch the generator output to avoid backpropagating through it
         # we don't want to update the generator during discriminator training
@@ -595,7 +603,8 @@ def _train_generator(
 
     # Generate a batch of images
     # Now we do want to update the generator, so don't detatch
-    gen_imgs = _gen_imgs(generator, batch_size)
+    # input size of 1 during training
+    gen_imgs = _gen_imgs(generator, batch_size, 1)
     g_loss = -discriminator(gen_imgs).mean()
 
     g_loss.backward()
@@ -738,7 +747,7 @@ def train_new_gan(
 
 
 def generate_tiles(
-    generator: torch.nn.Module, *, n_tiles: int, device: str
+    generator: Generator, *, n_tiles: int, noise_size: int, device: str
 ) -> np.ndarray:
     """
     Generate tiles using the generator, scaled to between 0 and 1.
@@ -748,6 +757,7 @@ def generate_tiles(
 
     :param generator: trained generator model
     :param n_tiles: number of tiles to generate
+    :param noise_size: spatial size of input noise map
     :param device: device to run the generator on
 
     :return: numpy array of shape (n_tiles, tile_size, tile_size)
@@ -756,11 +766,11 @@ def generate_tiles(
         raise GenerationError("device must be 'cpu' or 'cuda'")
 
     generator.eval()
-    # TODO make this use the generation helper
-    latent_dim = generator.l1[0].in_features
 
     with torch.no_grad():
-        z = torch.randn(n_tiles, latent_dim).to(device)
+        z = torch.randn(n_tiles, generator.latent_channels, noise_size, noise_size).to(
+            device
+        )
         gen_tile = ((generator(z) + 1) / 2).squeeze(1).cpu().numpy()
 
     return gen_tile
