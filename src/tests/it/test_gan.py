@@ -11,7 +11,7 @@ from current_denoising.generation import dcgan
 @pytest.fixture
 def generator():
     """uninitalised generator"""
-    return dcgan.Generator(img_size=32, latent_dim=1)
+    return dcgan.Generator(img_size=32, latent_channels=1)
 
 
 @pytest.fixture
@@ -25,10 +25,9 @@ def test_invalid_input_size():
     Check we get an error if the input size is invalid
     """
     with pytest.raises(dcgan.ModelError):
-        dcgan.Generator(img_size=28, latent_dim=1)
+        dcgan.Generator(img_size=28, latent_channels=1)
     with pytest.raises(dcgan.ModelError):
-        config = {"img_size": 36, "latent_dim": 1}
-        dcgan.Generator(img_size=36, latent_dim=1)
+        dcgan.Generator(img_size=36, latent_channels=1)
 
 
 def test_invalid_device(generator):
@@ -36,16 +35,24 @@ def test_invalid_device(generator):
     Check we raise an error if the device is invalid
     """
     with pytest.raises(dcgan.GenerationError):
-        dcgan.generate_tiles(generator, n_tiles=4, device="invalid")
+        dcgan.generate_tiles(generator, n_tiles=4, noise_size=1, device="invalid")
 
 
 def test_inference(generator):
     """
     Check we get the right shaped output
     """
-    tiles = dcgan.generate_tiles(generator, n_tiles=4, device="cpu")
+    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=1, device="cpu")
 
     assert tiles.shape == (4, 32, 32)
+
+
+def test_inference_larger(generator):
+    """
+    Check if we double the size of the input, we get a double sized output
+    """
+    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=2, device="cpu")
+    assert tiles.shape == (4, 64, 64)
 
 
 def test_discriminator(discriminator):
