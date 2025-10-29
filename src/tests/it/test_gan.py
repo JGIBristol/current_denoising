@@ -11,7 +11,7 @@ from current_denoising.generation import dcgan
 @pytest.fixture
 def generator():
     """uninitalised generator"""
-    return dcgan.Generator(img_size=32, latent_channels=1)
+    return dcgan.Generator(img_size=32, latent_channels=1, latent_size=2)
 
 
 @pytest.fixture
@@ -20,14 +20,32 @@ def discriminator():
     return dcgan.Discriminator(img_size=32, n_blocks=4)
 
 
+def test_n_upsamples():
+    """
+    Check we get the expected number of upsamples in various cases
+    """
+    dcgan.Generator._n_upsamples(32, 1) == 5
+    dcgan.Generator._n_upsamples(32, 2) == 4
+    with pytest.raises(dcgan.ModelError):
+        dcgan.Generator._n_upsamples(32, 3)
+    with pytest.raises(dcgan.ModelError):
+        dcgan.Generator._n_upsamples(31, 2)
+
+
 def test_invalid_input_size():
     """
     Check we get an error if the input size is invalid
     """
+    # Check it works
+    dcgan.Generator(img_size=32, latent_channels=1, latent_size=2)
+
+    # Check it doesn't work
     with pytest.raises(dcgan.ModelError):
-        dcgan.Generator(img_size=28, latent_channels=1)
+        dcgan.Generator(img_size=28, latent_channels=1, latent_size=2)
     with pytest.raises(dcgan.ModelError):
-        dcgan.Generator(img_size=36, latent_channels=1)
+        dcgan.Generator(img_size=36, latent_channels=1, latent_size=2)
+    with pytest.raises(dcgan.ModelError):
+        dcgan.Generator(img_size=32, latent_channels=1, latent_size=3)
 
 
 def test_invalid_device(generator):
@@ -42,7 +60,7 @@ def test_inference(generator):
     """
     Check we get the right shaped output
     """
-    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=1, device="cpu")
+    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=2, device="cpu")
 
     assert tiles.shape == (4, 32, 32)
 
@@ -51,7 +69,7 @@ def test_inference_larger(generator):
     """
     Check if we double the size of the input, we get a double sized output
     """
-    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=2, device="cpu")
+    tiles = dcgan.generate_tiles(generator, n_tiles=4, noise_size=4, device="cpu")
     assert tiles.shape == (4, 64, 64)
 
 

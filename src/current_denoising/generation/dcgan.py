@@ -3,6 +3,7 @@ Deep convolutional GAN (DCGAN) implementation
 """
 
 import pathlib
+import warnings
 from functools import cache
 from typing import NamedTuple
 
@@ -90,7 +91,8 @@ class GANHyperParams(NamedTuple):
     d_lr: float
     n_critic: int
     lambda_gp: float
-    generator_latent_dim: int
+    generator_latent_size: int
+    generator_latent_channels: int
     n_discriminator_blocks: int
 
 
@@ -303,24 +305,38 @@ class Generator(torch.nn.Module):
 
     """
 
-    def __init__(self, img_size: int, latent_channels: int):
+    @staticmethod
+    def _n_upsamples(img_size: int, latent_size: int):
+        """
+        Find the number of upsampling steps needed to go from the latent size to the output size
+        """
+        n_upsamples = int(np.log2(img_size // latent_size))
+        if latent_size * (2**n_upsamples) != img_size:
+            raise ModelError(
+                f"Must be able to upsample from latent size of {latent_size} to {img_size} via powers of 2\n"
+                f"got {latent_size}x2^{n_upsamples} = {latent_size * (2**n_upsamples)} != {img_size}"
+            )
+        return n_upsamples
+
+    def __init__(self, img_size: int, latent_channels: int, latent_size: int):
         """
         defines the architecture
 
         :param img_size: size of the generated image (assumed square).
                          Must be a power of 2.
         :param latent_channels: number of channels in the input noise map
+        :param latent_size: size of the input noise map, assumed square.
         """
         self.latent_channels = latent_channels
+        self.latent_size = latent_size
 
         # Other things that I might want to make configurable later
+        # This is the number of channels after the first convolution
         self.base_channels = 128
 
         # Our generator starts by projecting a high-channel, 1x1 image into a small
         # low-res feature map
-        num_upsamples = int(np.log2(img_size))
-        if 2**num_upsamples != img_size:
-            raise ModelError(f"img_size must be a power of 2; got {img_size}")
+        num_upsamples = self._n_upsamples(img_size, self.latent_size)
 
         super().__init__()
 
@@ -368,6 +384,27 @@ class Generator(torch.nn.Module):
         out = self.l1(z)
         img = self.conv_blocks(out)
         return img
+
+    def gen_imgs(self, batch_size: int, noise_size: int | None = None) -> torch.Tensor:
+        """
+        Generate a batch of images, using the device that this model is on.
+
+        Will break or do something weird if this model is on multiple devices, but that won't happen...
+
+        :param batch_size: how many images
+        :param noise_size: size of input noise map.
+                           If not specified, defaults to the size that the model was trained on.
+        """
+        latent_size = noise_size if noise_size is not None else self.latent_size
+        z_d = torch.randn(
+            batch_size,
+            self.latent_channels,
+            latent_size,
+            latent_size,
+            device=_get_device(self),
+            dtype=torch.float32,
+        )
+        return self(z_d)
 
 
 class Discriminator(torch.nn.Module):
@@ -491,15 +528,8 @@ def _gen_imgs(generator: Generator, batch_size: int, noise_size: int) -> torch.T
 
     :return: a (batch_size, 1, H, W) tensor of generated images
     """
-    z_d = torch.randn(
-        batch_size,
-        generator.latent_channels,
-        noise_size,
-        noise_size,
-        device=_get_device(generator),
-        dtype=torch.float32,
-    )
-    return generator(z_d)
+    warnings.warn("use the class method instead", category=DeprecationWarning)
+    return generator.gen_imgs(batch_size, noise_size)
 
 
 @cache
@@ -528,6 +558,7 @@ def _train_critic(
     optimiser: torch.optim.Optimizer,
     hyperparams: GANHyperParams,
     batch_size: torch.Tensor,
+    latent_size: int,
     real_imgs: torch.Tensor,
     alphas: torch.Tensor,
 ) -> tuple[float, float, float, float]:
@@ -559,7 +590,7 @@ def _train_critic(
         # Generate some fake images for discriminator training
         # Detach since we don't want to propagate through the generator
         # input size of 1 during training
-        gen_imgs_d = _gen_imgs(generator, batch_size, 1).detach()
+        gen_imgs_d = generator.gen_imgs(batch_size, latent_size).detach()
 
         # detatch the generator output to avoid backpropagating through it
         # we don't want to update the generator during discriminator training
@@ -593,6 +624,7 @@ def _train_generator(
     discriminator: Discriminator,
     optimiser: torch.optim.Optimizer,
     batch_size: int,
+    noise_size: int,
 ) -> float:
     """
     Train the generator.
@@ -604,7 +636,7 @@ def _train_generator(
     # Generate a batch of images
     # Now we do want to update the generator, so don't detatch
     # input size of 1 during training
-    gen_imgs = _gen_imgs(generator, batch_size, 1)
+    gen_imgs = generator.gen_imgs(batch_size, noise_size)
     g_loss = -discriminator(gen_imgs).mean()
 
     g_loss.backward()
@@ -692,6 +724,7 @@ def train(
                 optimizer_d,
                 hyperparams,
                 batch_size,
+                hyperparams.generator_latent_size,
                 imgs,
                 alphas[epoch],  # Get a sub-tensor of alphas
             )
@@ -701,7 +734,13 @@ def train(
             training_metrics.critic_losses[epoch, batch] = loss
 
             # Now train the generator
-            loss = _train_generator(generator, discriminator, optimizer_g, batch_size)
+            loss = _train_generator(
+                generator,
+                discriminator,
+                optimizer_g,
+                batch_size,
+                hyperparams.generator_latent_size,
+            )
             training_metrics.gen_losses[epoch, batch] = loss
 
         # Find the parameter gradients (i.e. how big the update step was this epoch)
@@ -731,7 +770,11 @@ def train_new_gan(
     :return: trained discriminator
     :return: GAN training metrics
     """
-    generator = Generator(img_size, hyperparams.generator_latent_dim)
+    generator = Generator(
+        img_size,
+        hyperparams.generator_latent_channels,
+        hyperparams.generator_latent_size,
+    )
     discriminator = Discriminator(img_size, hyperparams.n_discriminator_blocks)
 
     generator.to(device)
