@@ -209,3 +209,47 @@ def test_clipped_coriolis():
     assert np.array_equal(
         ioutils.clipped_coriolis_param(latitudes, clip_at=15), expected_coriolis
     )
+
+
+def test_remove_nanmean():
+    """
+    Check we get the right centred array if our array contains NaNs
+    """
+    np.testing.assert_array_almost_equal(
+        ioutils._remove_nanmean(
+            np.array(
+                [
+                    [0, 1],
+                    [2, np.nan],
+                ]
+            )
+        ),
+        np.array(
+            [
+                [-1, 0],
+                [1, np.nan],
+            ]
+        ),
+    )
+
+
+def test_remove_mean():
+    """
+    Check we get the right centred array for an array with no NaNs
+    """
+    np.testing.assert_array_almost_equal(
+        ioutils._remove_nanmean(
+            np.array(
+                [
+                    [0, 1],
+                    [2, 1],
+                ]
+            )
+        ),
+        np.array(
+            [
+                [-1, 0],
+                [1, 0],
+            ],
+        ),
+    )

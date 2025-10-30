@@ -16,6 +16,11 @@ GRAVITY = 9.80665
 class IOError(Exception):
     """General error with I/O"""
 
+def _remove_nanmean(array: np.ndarray) -> np.ndarray:
+    """
+    Remove mean of an array that possibly contains NaNs
+    """
+    return array - np.nanmean(array)
 
 def read_currents(path: pathlib.Path) -> np.ndarray:
     """
