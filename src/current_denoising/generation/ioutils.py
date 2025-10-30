@@ -16,13 +16,15 @@ GRAVITY = 9.80665
 class IOError(Exception):
     """General error with I/O"""
 
+
 def _remove_nanmean(array: np.ndarray) -> np.ndarray:
     """
     Remove mean of an array that possibly contains NaNs
     """
     return array - np.nanmean(array)
 
-def read_currents(path: pathlib.Path) -> np.ndarray:
+
+def read_currents(path: pathlib.Path, *, remove_mean: bool = True) -> np.ndarray:
     """
     Read a .dat file holding current data and return a 720x1440 shaped numpy array giving
     the current in m/s (I think).
@@ -31,6 +33,7 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
 
     :param path: location of the .dat file; current data is located in
                  data/projects/SING/richard_stuff/Table2/currents/ on the RDSF
+    :param remove_mean: whether the mean will be removed (nan-aware)
     :returns: a numpy array holding current speed
     :raises IOError: if the file is malformed
     """
@@ -49,7 +52,10 @@ def read_currents(path: pathlib.Path) -> np.ndarray:
         if closing_record_len != first_record_len:
             raise IOError("Close marker does not match the opener.")
 
-    data[data == 0] = np.nan
+    data[data == -1.9e19] = np.nan
+
+    if remove_mean:
+        data = _remove_nanmean(data)
 
     return np.flipud(data.reshape(shape))
 
@@ -158,9 +164,18 @@ def read_clean_mdt(
     year: int,
     model: str = "ACCESS-CM2",
     name: str = "r1i1p1f1_gn",
+    remove_mean: bool = True,
 ) -> np.ndarray:
     """
     Read clean MDT data from a .dat file.
+
+    :param path: path to .dat file containing mean dynamic topographies as a Fortran-ordered .dat file
+    :param metadata_path: path to a textfile containing the MDT metadata
+    :param year: gets the MDT for this year, according to the metadata
+    :param model: gets the MDT from this model, according to the metadata
+    :param name: gets the with this name, according to the metadata. There's more documentation about what this
+                 means somewhere, but basically don't worry about it
+    :param remove_mean: whether to remove the mean (nan-aware).
     """
     metadata = _read_clean_current_metadata(metadata_path)
 
@@ -213,6 +228,9 @@ def read_clean_mdt(
         retval = np.fromfile(f, dtype="<f4", count=header // 4)
 
     retval[retval == -1.9e19] = np.nan
+
+    if remove_mean:
+        retval = _remove_nanmean(retval)
 
     # Make it look right
     return np.flipud(retval.reshape((720, 1440)))
