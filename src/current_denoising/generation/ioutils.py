@@ -3,6 +3,7 @@ Input and output utilities
 """
 
 import pathlib
+from typing import Callable
 from functools import cache
 
 import numpy as np
@@ -348,7 +349,7 @@ def _tile_index(
     return y_index, x_index
 
 
-def _tile_rms(tile: np.ndarray) -> float:
+def tile_rms(tile: np.ndarray) -> float:
     """
     Calculate the RMS of a tile, ignoring NaNs
 
@@ -363,7 +364,7 @@ def extract_tiles(
     input_img: np.ndarray,
     *,
     num_tiles: int,
-    max_rms: float,
+    tile_criterion: tuple[Callable[[np.ndarray], float], float] | None = None,
     max_latitude: float = 64.0,
     tile_size: int = 32,
     allow_nan: bool = False,
@@ -379,11 +380,16 @@ def extract_tiles(
     :param input_img: The input image from which to extract tiles.
     :param tile_size: The size of each tile.
     :param num_tiles: The number of tiles to extract.
-    :param max_rms: Maximum allowed RMS value in a tile
+    :param tile_criterion: If specified, a tuple of:
+                            - fcn: a function that takes a tile and returns a float
+                            - threshold: a float
+                           Only tiles where fcn(tile) < threshold will be kept.
+                           e.g. pass `(tile_rms, 0.5)` to only keep tiles where `tile_rms(tile) < 0.5`.
     :param max_latitude: The maximum latitude for the tiles;
                          will exclude tiles which extend above/below this latitude N/S.
+                         Pass np.inf to keep all latitudes.
     :param allow_nan: Whether to allow the tiles to contain NaN (probably land) pixels.
-    :param return_indices: whether to also return the location of each tile
+    :param return_indices: whether to also return the location of each tile. Useful for plotting.
 
     :returns: A numpy array containing the extracted tiles.
     :returns: if `return_indices`, returns the location of each tile as well
@@ -404,6 +410,10 @@ def extract_tiles(
     tiles = np.empty((num_tiles, tile_size, tile_size), dtype=input_img.dtype)
     indices_found = 0
     indices = []
+
+    if tile_criterion is not None:
+        fcn, threshold = tile_criterion
+
     while indices_found < num_tiles:
         y, x = _tile_index(
             rng,
@@ -422,13 +432,16 @@ def extract_tiles(
         if not allow_nan and np.isnan(tile).any():
             continue
 
-        # Check the RMS of the tile
-        if _tile_rms(tile) < max_rms:
-            tiles[indices_found] = tile
-            indices_found += 1
+        # We might want to discard this tile
+        if tile_criterion is not None and fcn(tile) > threshold:
+            continue
 
-            if return_indices:
-                indices.append((y, x))
+        # We did it! we found a tile to keep
+        # Store the tile + increment the counter
+        tiles[indices_found] = tile
+        if return_indices:
+            indices.append((y, x))
+        indices_found += 1
 
     if return_indices:
         return tiles, indices

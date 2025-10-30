@@ -38,12 +38,10 @@ def test_extract_tiles_invalid_image_dim():
     num_tiles = 1
     tile_size = 8
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(
-            None, np.empty((32, 32, 3)), num_tiles=num_tiles, max_rms=np.inf
-        )
+        ioutils.extract_tiles(None, np.empty((32, 32, 3)), num_tiles=num_tiles)
 
     with pytest.raises(ioutils.IOError, match="Input image must be 2d"):
-        ioutils.extract_tiles(None, np.empty(32), num_tiles=num_tiles, max_rms=np.inf)
+        ioutils.extract_tiles(None, np.empty(32), num_tiles=num_tiles)
 
 
 def test_extract_tiles_large_tiles():
@@ -51,14 +49,10 @@ def test_extract_tiles_large_tiles():
     Check we get the right error if we pass a large tile size
     """
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(
-            None, np.empty((128, 32)), num_tiles=1, max_rms=np.inf, tile_size=64
-        )
+        ioutils.extract_tiles(None, np.empty((128, 32)), num_tiles=1, tile_size=64)
 
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(
-            None, np.empty((32, 128)), num_tiles=1, max_rms=np.inf, tile_size=64
-        )
+        ioutils.extract_tiles(None, np.empty((32, 128)), num_tiles=1, tile_size=64)
 
 
 def test_extract_indices(rng):
@@ -83,7 +77,7 @@ class MockRNG:
 
     def __init__(self, h: int, w: int, tile: int):
         # These are the indices we'll return
-        self.indices = [(0, 0), (1, 1), (2, 3), (2, 5)]
+        self.indices = [(0, 0), (1, 1), (2, 3), (2, 5), (0, 0)]
         self.return_y = True
         self.index = 0
 
@@ -95,10 +89,11 @@ class MockRNG:
             self.return_y = True
             self.index += 1
             return self.indices[self.index - 1][1]
+        # We shouldn't get here...
         raise
 
 
-def test_extract_tiles(image):
+def test_extract_tiles_no_criterion(image):
     """
     Mocking the RNG to return a predefined sequence, see
     if we get the right tiles out
@@ -114,7 +109,6 @@ def test_extract_tiles(image):
         rng,
         image,
         num_tiles=num_tiles,
-        max_rms=np.inf,
         tile_size=tile_size,
         max_latitude=np.inf,
     )
@@ -134,6 +128,46 @@ def test_extract_tiles(image):
     np.testing.assert_array_equal(tiles[3], expected[3])
 
 
+def test_extract_tiles_rms_criterion(image):
+    """
+    Extract tiles but only those with a certain RMS,
+    which should make us skip one tile
+    compared to test_extract_tiles_no_criterion
+    """
+    num_tiles = 4
+    tile_size = 2
+
+    # Mock the RNG by using this class which just returns some predefined
+    # co-ordinates in order
+    rng = MockRNG(*image.shape, tile_size)
+
+    tiles = ioutils.extract_tiles(
+        rng,
+        image,
+        num_tiles=num_tiles,
+        tile_criterion=(ioutils.tile_rms, 24),
+        tile_size=tile_size,
+        max_latitude=np.inf,
+    )
+
+    assert len(tiles) == num_tiles
+
+    # Now we expect to reject the last tile, and instead the MockRNG
+    # will return (0, 0) as the fifth "random" number which gives us
+    # the first tile back again
+    expected = [
+        image[0:2, 0:2],
+        image[1:3, 1:3],
+        image[2:4, 3:5],
+        image[0:2, 0:2],
+    ]
+
+    np.testing.assert_array_equal(tiles[0], expected[0])
+    np.testing.assert_array_equal(tiles[1], expected[1])
+    np.testing.assert_array_equal(tiles[2], expected[2])
+    np.testing.assert_array_equal(tiles[3], expected[3])
+
+
 def test_tile_rms():
     """
     Check we calculate RMS properly
@@ -141,7 +175,7 @@ def test_tile_rms():
     tile = np.array([[10, 11], [18, 19]])
     expected_rms = np.sqrt((10**2 + 11**2 + 18**2 + 19**2) / 4)
 
-    assert ioutils._tile_rms(tile) == pytest.approx(expected_rms)
+    assert ioutils.tile_rms(tile) == pytest.approx(expected_rms)
 
 
 def test_bad_max_latitude():
