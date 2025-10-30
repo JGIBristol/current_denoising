@@ -31,6 +31,30 @@ def tall_image() -> np.ndarray:
     return np.arange(95).reshape((19, 5))
 
 
+@pytest.fixture
+def sinusoid_image() -> np.ndarray:
+    """
+    An image composed of controlled sinusoids,
+    so we know its frequency spectrum.
+    """
+    size = 32
+    freq_powers = {2: 0.6, 4: 0.3, 8: 0.1}
+    y, x = np.mgrid[0:size, 0:size]
+    image = np.zeros((size, size))
+
+    for freq, power in freq_powers.items():
+        phase_x = np.random.uniform(0, 2 * np.pi)
+        phase_y = np.random.uniform(0, 2 * np.pi)
+
+        component = (
+            np.sin(2 * np.pi * freq * x / size + phase_x)
+            + np.sin(2 * np.pi * freq * y / size + phase_y)
+        ) * np.sqrt(power)
+        image += component
+
+    return image
+
+
 def test_extract_tiles_invalid_image_dim():
     """
     Check we get the right error if we pass a 1D or 3D image
@@ -287,3 +311,50 @@ def test_remove_mean():
             ],
         ),
     )
+
+
+def test_fft_fraction_wrong_shape():
+    """
+    Check we get the right errors if the wrong shaped stuff is passed in to the FFT calculation
+    """
+    # This one should work
+    ioutils.fft_fraction(np.ones((3, 3)), 0.5)
+
+    # These ones shouldn't
+    with pytest.raises(ioutils.PowerSpectrumError):
+        ioutils.fft_fraction(np.ones((3, 3, 3)), 0.5)
+    with pytest.raises(ioutils.PowerSpectrumError):
+        ioutils.fft_fraction(np.ones((2, 3)), 0.5)
+
+
+def test_fft_fraction_wrong_threshold():
+    """
+    Check we get the right error if a power threshold outside [0, 1] is requested
+    """
+    # This one should work
+    ioutils.fft_fraction(np.ones((3, 3)), 0.5)
+    ioutils.fft_fraction(np.ones((3, 3)), 0.0)
+    ioutils.fft_fraction(np.ones((3, 3)), -0.0)
+    ioutils.fft_fraction(np.ones((3, 3)), 1.0)
+
+    # These ones shouldn't
+    with pytest.raises(ioutils.PowerSpectrumError):
+        ioutils.fft_fraction(np.ones((3, 3)), -0.1)
+    with pytest.raises(ioutils.PowerSpectrumError):
+        ioutils.fft_fraction(np.ones((3, 3)), 2)
+
+
+def test_fft_fraction(sinusoid_image):
+    """
+    Check we get the right fraction of Fourier power from a test image
+    """
+    # r_max is the half-diagonal
+    r_max = np.sqrt(sinusoid_image.shape[0] ** 2 + sinusoid_image.shape[1] ** 2)
+    ioutils.fft_fraction(sinusoid_image, 0.5)
+
+    # Based on the image we defined above, we know there will only be contributions
+    # at r=2, r=4 and r=8
+    # And that their relative strengths will be in the ratio
+    # 6:3:1
+    # Therefore 4/10 of the power will be above the r=2 bits
+    np.testing.assert_almost_equal(ioutils.fft_fraction(sinusoid_image, 3 / r_max), 0.4)

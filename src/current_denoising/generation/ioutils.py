@@ -18,6 +18,10 @@ class IOError(Exception):
     """General error with I/O"""
 
 
+class PowerSpectrumError(IOError):
+    """Error calculating FFT or power spectrum"""
+
+
 def _remove_nanmean(array: np.ndarray) -> np.ndarray:
     """
     Remove mean of an array that possibly contains NaNs
@@ -357,6 +361,48 @@ def tile_rms(tile: np.ndarray) -> float:
     :returns: the RMS of the tile
     """
     return np.sqrt(np.nanmean(tile**2))
+
+
+def fft_fraction(tile: np.ndarray, power_threshold: float):
+    """
+    Get the fraction of Fourier power that is above a threshold.
+
+    Intended to be used with `extract_tiles` to choose tiles with a small contribution
+    from low-frequency components
+
+    :param tile: the image to calculate the power contributions for. Must be 2d and square.
+    :param power_threshold: the threshold above which frequencies are considered "high",
+                            as a fraction of the maximum power in the image. I.e. this is
+                            a float between 0 and 1; using 0.5 will return the fraction of
+                            power at freqencies greater than half the maximum.
+
+    :returns: fraction of power in the Fourier spectrum that is above the threshold.
+    :raises PowerSpectrumError: if the tile is not square or 2D.
+    :raises PowerSpectrumError: if the requested power_threshold is outside the range [0, 1].
+    """
+    if not tile.ndim == 2 or tile.shape[0] != tile.shape[1]:
+        raise PowerSpectrumError(f"tile must be 2d and square; got {tile.shape=}")
+    if not 0 <= power_threshold <= 1:
+        raise PowerSpectrumError(
+            f"power_threshold must be as a fraction of maximum power, i.e. between 0 and 1; got {power_threshold}"
+        )
+
+    # Compute power
+    f = np.fft.fft2(tile)
+    fshift = np.fft.fftshift(f)
+    power_spectrum = np.abs(fshift) ** 2
+
+    # Create frequency grid
+    y, x = np.indices(tile.shape)
+    center_y, center_x = tile.shape[0] // 2, tile.shape[1] // 2
+    r = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+
+    # Calculate high frequency power for all windows
+    high_freq_mask = r > (r.max() * 2 * power_threshold)
+    total_power = power_spectrum.sum()
+    high_freq_power = power_spectrum[..., high_freq_mask].sum()
+
+    return high_freq_power / total_power
 
 
 def extract_tiles(
