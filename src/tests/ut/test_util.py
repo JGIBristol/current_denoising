@@ -195,4 +195,13 @@ def test_window_too_large():
         util.apply_to_sliding_window(arr, np.max, 6)
     with pytest.raises(util.UtilError):
         util.apply_to_sliding_window(arr, np.max, 4)
-    
+
+
+def test_no_axis_arg_in_fcn():
+    """
+    Check we get the right error if the function we provided doesn't take an
+    axis argument
+    """
+    arr = np.arange(15).reshape((3, 5))
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, lambda x: np.max(x), 2)

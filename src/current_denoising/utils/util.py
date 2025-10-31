@@ -149,6 +149,16 @@ def apply_to_sliding_window(
     and return a number.
 
     Pads the result on the right and bottom edges (i.e. the last rows and columns) with NaN.
+
+    :param array: the array to apply the function to
+    :param fcn: the function to apply to the windows. Must take an "axis" argument,
+                and have a result that can be cast to a float.
+    :param window_size: size of the square windows to be extracted from the array
+
+    :return: an array with the same shape as `array` where each entry is the result of
+             applying `fcn` to each window in `array`. Padded with NaNs.
+    :raises UtilError: if the window size is too large, or the function does not take an
+                       `axis` argument
     """
     if any([window_size > x for x in array.shape]):
         raise UtilError(
