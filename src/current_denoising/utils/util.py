@@ -3,8 +3,9 @@ General utilities
 """
 
 import functools
-import numpy as np
 from typing import Callable
+
+import numpy as np
 
 KM_PER_DEG = 111.32
 """Size of a degree on the grid (at the equator) in km"""
@@ -149,3 +150,8 @@ def apply_to_sliding_window(
 
     Pads the result on the right and bottom edges (i.e. the last rows and columns) with NaN.
     """
+    if any([window_size > x for x in array.shape]):
+        raise UtilError(
+            f"Cannot create windows with size {window_size} from {array.shape=}"
+        )
+
