@@ -170,15 +170,23 @@ def test_sliding_window():
     """
     Mainline test case for sliding window function
     """
+    arr = np.arange(25).reshape((5, 5))
+    expected = np.array(
+        [
+            [6, 7, 8, 9, np.nan],
+            [11, 12, 13, 14, np.nan],
+            [16, 17, 18, 19, np.nan],
+            [21, 22, 23, 24, np.nan],
+            [np.nan, np.nan, np.nan, np.nan, np.nan],
+        ]
+    )
+
+    np.testing.assert_array_equal(
+        expected, util.apply_to_sliding_window(arr, np.max, 2)
+    )
 
 
 def test_window_too_large():
     """
     Window is larger than the grid
-    """
-
-
-def test_window_fcn_wrong_args():
-    """
-    Check we get the right error if a function with the wrong signature passed in
     """
