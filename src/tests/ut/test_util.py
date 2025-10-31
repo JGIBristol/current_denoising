@@ -190,3 +190,9 @@ def test_window_too_large():
     """
     Window is larger than the grid
     """
+    arr = np.arange(15).reshape((3, 5))
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, np.max, 6)
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, np.max, 4)
+    
