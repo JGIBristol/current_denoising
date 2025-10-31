@@ -164,3 +164,21 @@ def test_cos_latitude():
     np.testing.assert_array_almost_equal(
         np.cos(latitudes), util.cos_latitudes(n_points)
     )
+
+
+def test_sliding_window():
+    """
+    Mainline test case for sliding window function
+    """
+
+
+def test_window_too_large():
+    """
+    Window is larger than the grid
+    """
+
+
+def test_window_fcn_wrong_args():
+    """
+    Check we get the right error if a function with the wrong signature passed in
+    """

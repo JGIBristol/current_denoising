@@ -4,12 +4,17 @@ General utilities
 
 import functools
 import numpy as np
+from typing import Callable
 
 KM_PER_DEG = 111.32
 """Size of a degree on the grid (at the equator) in km"""
 
 
-class LatLongError(Exception):
+class UtilError(Exception):
+    """General base class"""
+
+
+class LatLongError(UtilError):
     """General exception for latitude/longitude calculation errors"""
 
 
@@ -130,3 +135,17 @@ def cos_latitudes(n_points: int) -> np.ndarray:
     lat, _ = lat_long_grid((n_points, 1))
 
     return np.cos(np.deg2rad(lat))
+
+
+def apply_to_sliding_window(
+    array: np.ndarray, fcn: Callable[[np.ndarray], float], window_size: int
+) -> np.ndarray:
+    """
+    Apply a function to a 2d array in sliding windows.
+
+    Applies the given function to (window_size x window_size) square sliding
+    windows and returns the result. fcn must take a square window as its only argument
+    and return a number.
+
+    Pads the result on the right and bottom edges (i.e. the last rows and columns) with NaN.
+    """
