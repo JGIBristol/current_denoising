@@ -165,3 +165,16 @@ def apply_to_sliding_window(
             f"Cannot create windows with size {window_size} from {array.shape=}"
         )
 
+    windows = np.lib.stride_tricks.sliding_window_view(
+        array, (window_size, window_size)
+    )
+
+    retval = fcn(windows, axis=(-2, -1)).astype(float)
+
+    pad_width = window_size - 1
+    return np.pad(
+        retval,
+        ((0, pad_width), (0, pad_width)),
+        mode="constant",
+        constant_values=np.nan,
+    )
