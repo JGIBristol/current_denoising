@@ -2,14 +2,21 @@
 General utilities
 """
 
+import inspect
 import functools
+from typing import Callable
+
 import numpy as np
 
 KM_PER_DEG = 111.32
 """Size of a degree on the grid (at the equator) in km"""
 
 
-class LatLongError(Exception):
+class UtilError(Exception):
+    """General base class"""
+
+
+class LatLongError(UtilError):
     """General exception for latitude/longitude calculation errors"""
 
 
@@ -130,3 +137,56 @@ def cos_latitudes(n_points: int) -> np.ndarray:
     lat, _ = lat_long_grid((n_points, 1))
 
     return np.cos(np.deg2rad(lat))
+
+
+def _arg_in_signature(fcn: Callable, arg: str) -> bool:
+    """
+    Check whether the provided arg is in the list of function args
+    """
+    return arg in inspect.signature(fcn).parameters
+
+
+def apply_to_sliding_window(
+    array: np.ndarray, fcn: Callable[[np.ndarray], float], window_size: int
+) -> np.ndarray:
+    """
+    Apply a function to a 2d array in sliding windows.
+
+    Applies the given function to (window_size x window_size) square sliding
+    windows and returns the result. fcn must take a square window as its only argument
+    and return a number.
+
+    Pads the result on the right and bottom edges (i.e. the last rows and columns) with NaN.
+
+    :param array: the array to apply the function to
+    :param fcn: the function to apply to the windows. Must take an "axis" argument,
+                and have a result that can be cast to a float.
+    :param window_size: size of the square windows to be extracted from the array
+
+    :return: an array with the same shape as `array` where each entry is the result of
+             applying `fcn` to each window in `array`. Padded with NaNs.
+    :raises UtilError: if the window size is too large, or the function does not take an
+                       `axis` argument
+    """
+    if any([window_size > x for x in array.shape]):
+        raise UtilError(
+            f"Cannot create windows with size {window_size} from {array.shape=}"
+        )
+    if not _arg_in_signature(fcn, "axis"):
+        raise UtilError(
+            f"function {fcn} does not accept an 'axis' argument; required to broadcast over a sliding window"
+        )
+
+    windows = np.lib.stride_tricks.sliding_window_view(
+        array, (window_size, window_size)
+    )
+
+    retval = fcn(windows, axis=(-2, -1)).astype(float)
+
+    pad_width = window_size - 1
+    return np.pad(
+        retval,
+        ((0, pad_width), (0, pad_width)),
+        mode="constant",
+        constant_values=np.nan,
+    )
