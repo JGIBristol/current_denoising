@@ -164,3 +164,59 @@ def test_cos_latitude():
     np.testing.assert_array_almost_equal(
         np.cos(latitudes), util.cos_latitudes(n_points)
     )
+
+
+def test_sliding_window():
+    """
+    Mainline test case for sliding window function
+    """
+    arr = np.arange(25).reshape((5, 5))
+    expected = np.array(
+        [
+            [6, 7, 8, 9, np.nan],
+            [11, 12, 13, 14, np.nan],
+            [16, 17, 18, 19, np.nan],
+            [21, 22, 23, 24, np.nan],
+            [np.nan, np.nan, np.nan, np.nan, np.nan],
+        ]
+    )
+
+    np.testing.assert_array_equal(
+        expected, util.apply_to_sliding_window(arr, np.max, 2)
+    )
+
+
+def test_window_too_large():
+    """
+    Window is larger than the grid
+    """
+    arr = np.arange(15).reshape((3, 5))
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, np.max, 6)
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, np.max, 4)
+
+
+def test_arg_in_signature():
+    """
+    Check the function argument helper works
+    """
+
+    def tmp(x):
+        return x
+
+    assert util._arg_in_signature(tmp, "x")
+    assert not util._arg_in_signature(tmp, "y")
+
+
+def test_no_axis_arg_in_fcn():
+    """
+    Check we get the right error if the function we provided doesn't take an
+    axis argument
+    """
+    arr = np.arange(15).reshape((3, 5))
+
+    util.apply_to_sliding_window(arr, np.max, 2)
+
+    with pytest.raises(util.UtilError):
+        util.apply_to_sliding_window(arr, lambda x: np.max(x), 2)

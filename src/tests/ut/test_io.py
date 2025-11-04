@@ -358,3 +358,50 @@ def test_fft_fraction(sinusoid_image):
     # 6:3:1
     # Therefore 4/10 of the power will be above the r=2 bits
     np.testing.assert_almost_equal(ioutils.fft_fraction(sinusoid_image, 3 / r_max), 0.4)
+
+
+def test_land_distance_nan():
+    """
+    Check we get the right distance from land if NaN is the sentinel
+    """
+    r8 = np.sqrt(8)
+    r5 = np.sqrt(5)
+    r2 = np.sqrt(2)
+    distances = np.array(
+        [
+            [r8, r5, 2, r5, r8],
+            [r5, r2, 1, r2, r5],
+            [2, 1, 0, 1, 2],
+            [r5, r2, 1, r2, r5],
+            [r8, r5, 2, r5, r8],
+        ]
+    )
+
+    arr = np.zeros_like(distances)
+    arr[2, 2] = np.nan
+    np.testing.assert_almost_equal(ioutils.distance_from_land(arr), distances)
+
+
+def test_land_distance_zero_sentinel():
+    """
+    Check we get the right distance from land if 0 is the sentinel
+    """
+    r8 = np.sqrt(8)
+    r5 = np.sqrt(5)
+    r2 = np.sqrt(2)
+    distances = np.array(
+        [
+            [r8, r5, 2, r5, r8],
+            [r5, r2, 1, r2, r5],
+            [2, 1, 0, 1, 2],
+            [r5, r2, 1, r2, r5],
+            [r8, r5, 2, r5, r8],
+        ]
+    )
+
+    arr = np.ones_like(distances)
+    arr[2, 2] = 0
+
+    np.testing.assert_almost_equal(
+        ioutils.distance_from_land(arr, land_sentinel=0), distances
+    )

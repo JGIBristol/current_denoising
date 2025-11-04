@@ -8,6 +8,7 @@ from functools import cache
 
 import numpy as np
 import pandas as pd
+from scipy.ndimage import distance_transform_edt
 
 from ..utils import util
 
@@ -492,3 +493,21 @@ def extract_tiles(
     if return_indices:
         return tiles, indices
     return tiles
+
+
+def distance_from_land(arr: np.ndarray, *, land_sentinel=np.nan):
+    """
+    Get the distance (in grid points) from the nearest land point.
+
+    This is not the "real" Euclidean distance, since it doesn't account for the variation
+    in size of grid point with latitude, but should be good enough for choosing the region
+    of interest for picking training tiles.
+
+    :param arr: 2d array of grid point data. N
+    :param land_sentinel: value that indicates a point is land
+    """
+    if arr.ndim != 2:
+        raise ValueError
+
+    mask = arr != land_sentinel if not np.isnan(land_sentinel) else ~np.isnan(arr)
+    return distance_transform_edt(mask)
