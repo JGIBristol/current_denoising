@@ -480,7 +480,9 @@ def extract_tiles(
             tile_size=tile_size,
         )
 
-        if forbidden_mask is not None and _tile_overlaps_mask((y, x), forbidden_mask, tile_size):
+        if forbidden_mask is not None and _tile_overlaps_mask(
+            (y, x), forbidden_mask, tile_size
+        ):
             continue
 
         tile = util.tile(input_img, (y, x), tile_size)
