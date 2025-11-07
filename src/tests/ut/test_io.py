@@ -99,7 +99,7 @@ class MockRNG:
     Used to mock an RNG - returns a specified sequence of integers
     """
 
-    def __init__(self, h: int, w: int, tile: int):
+    def __init__(self):
         # These are the indices we'll return
         self.indices = [(0, 0), (1, 1), (2, 3), (2, 5), (0, 0)]
         self.return_y = True
@@ -113,8 +113,55 @@ class MockRNG:
             self.return_y = True
             self.index += 1
             return self.indices[self.index - 1][1]
-        # We shouldn't get here...
+        # We shouldn't get here in any of our tests...
         raise
+
+
+def test_extract_tile_simple():
+    """
+    Simple check to see if we can extract a 2x2 tile from a 2x2 image
+    (i.e. do we just get the whole image back)
+    """
+
+    # The mock RNG returns 0, 0 first
+    img = np.arange(4).reshape((2, 2))
+    np.testing.assert_array_equal(
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=None,
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+        [img],
+    )
+
+
+def test_extract_tile_simple_criterion():
+    """
+    Check that we can extract a tile if we provide a criterion function
+    """
+    # The mock RNG returns (0, 0) first, which we will reject,
+    # and then returns (1, 1) which we will accept
+    img = np.arange(9).reshape((3, 3))
+    expected_tile = np.reshape([[4, 5], [7, 8]], (2, 2))
+
+    np.testing.assert_array_equal(
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=lambda tile: np.max(tile) == 8,
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+        [expected_tile],
+    )
 
 
 def test_extract_tiles_no_criterion(image):
@@ -127,7 +174,7 @@ def test_extract_tiles_no_criterion(image):
 
     # Mock the RNG by using this class which just returns some predefined
     # co-ordinates in order
-    rng = MockRNG(*image.shape, tile_size)
+    rng = MockRNG()
 
     tiles = ioutils.extract_tiles(
         rng,
@@ -163,13 +210,13 @@ def test_extract_tiles_rms_criterion(image):
 
     # Mock the RNG by using this class which just returns some predefined
     # co-ordinates in order
-    rng = MockRNG(*image.shape, tile_size)
+    rng = MockRNG()
 
     tiles = ioutils.extract_tiles(
         rng,
         image,
         num_tiles=num_tiles,
-        tile_criterion=(ioutils.tile_rms, 24),
+        tile_criterion=lambda tile: ioutils.tile_rms(tile) < 24,
         tile_size=tile_size,
         max_latitude=np.inf,
     )

@@ -411,7 +411,7 @@ def extract_tiles(
     input_img: np.ndarray,
     *,
     num_tiles: int,
-    tile_criterion: tuple[Callable[[np.ndarray], float], float] | None = None,
+    tile_criterion: Callable[[np.ndarray], bool] | None = None,
     max_latitude: float = 64.0,
     tile_size: int = 32,
     allow_nan: bool = False,
@@ -427,18 +427,15 @@ def extract_tiles(
     :param input_img: The input image from which to extract tiles.
     :param tile_size: The size of each tile.
     :param num_tiles: The number of tiles to extract.
-    :param tile_criterion: If specified, a tuple of:
-                            - fcn: a function that takes a tile and returns a float
-                            - threshold: a float
-                           Only tiles where fcn(tile) < threshold will be kept.
-                           e.g. pass `(tile_rms, 0.5)` to only keep tiles where `tile_rms(tile) < 0.5`.
+    :param tile_criterion: If specified, a function that takes a tile and returns a bool, telling us whether
+                           to keep the tile.
     :param max_latitude: The maximum latitude for the tiles;
                          will exclude tiles which extend above/below this latitude N/S.
                          Pass np.inf to keep all latitudes.
     :param allow_nan: Whether to allow the tiles to contain NaN (probably land) pixels.
     :param return_indices: whether to also return the location of each tile. Useful for plotting.
 
-    :returns: A numpy array containing the extracted tiles.
+    :returns: A numpy array containing the extracted tiles, shaped (num_tiles, tile_size, tile_size).
     :returns: if `return_indices`, returns the location of each tile as well
     :raises IOError: if the input image is not 2d
     :raises IOError: if the input image is smaller than the tile size
@@ -457,9 +454,6 @@ def extract_tiles(
     tiles = np.empty((num_tiles, tile_size, tile_size), dtype=input_img.dtype)
     indices_found = 0
     indices = []
-
-    if tile_criterion is not None:
-        fcn, threshold = tile_criterion
 
     while indices_found < num_tiles:
         y, x = _tile_index(
@@ -480,7 +474,7 @@ def extract_tiles(
             continue
 
         # We might want to discard this tile
-        if tile_criterion is not None and fcn(tile) > threshold:
+        if tile_criterion is not None and not tile_criterion(tile):
             continue
 
         # We did it! we found a tile to keep
