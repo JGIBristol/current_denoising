@@ -406,12 +406,22 @@ def fft_fraction(tile: np.ndarray, power_threshold: float):
     return high_freq_power / total_power
 
 
+def _tile_overlaps_mask(
+    index: tuple[int, int], mask: np.ndarray, tile_size: int
+) -> bool:
+    """
+    Check if a tile starting at `index` with width/height `tile_size` overlaps any True pixels in `mask`.
+    """
+    return util.tile(mask, index, tile_size).any()
+
+
 def extract_tiles(
     rng: np.random.Generator,
     input_img: np.ndarray,
     *,
     num_tiles: int,
     tile_criterion: Callable[[np.ndarray], bool] | None = None,
+    forbidden_mask: np.ndarray | None = None,
     max_latitude: float = 64.0,
     tile_size: int = 32,
     allow_nan: bool = False,
@@ -429,6 +439,8 @@ def extract_tiles(
     :param num_tiles: The number of tiles to extract.
     :param tile_criterion: If specified, a function that takes a tile and returns a bool, telling us whether
                            to keep the tile.
+    :param forbidden_mask: an array telling us elements we don't want to include in our output masks.
+                              Useful if there is a location-based criterion for selection (e.g. distance from land).
     :param max_latitude: The maximum latitude for the tiles;
                          will exclude tiles which extend above/below this latitude N/S.
                          Pass np.inf to keep all latitudes.
@@ -437,6 +449,7 @@ def extract_tiles(
 
     :returns: A numpy array containing the extracted tiles, shaped (num_tiles, tile_size, tile_size).
     :returns: if `return_indices`, returns the location of each tile as well
+    :raises IOError: if `forbidden_mask` has a different shape to `input_img`.
     :raises IOError: if the input image is not 2d
     :raises IOError: if the input image is smaller than the tile size
     """
@@ -445,6 +458,10 @@ def extract_tiles(
     if input_img.shape[0] < tile_size or input_img.shape[1] < tile_size:
         raise IOError(
             f"Tile size must be smaller than image size; got {input_img.shape} but {tile_size=}"
+        )
+    if forbidden_mask is not None and forbidden_mask.shape != input_img.shape:
+        raise IOError(
+            f"Mask shape must match img, got {input_img.shape=}; {forbidden_mask.shape=}"
         )
 
     # Choose the range of indices to pick from
@@ -462,6 +479,9 @@ def extract_tiles(
             max_latitude=max_latitude,
             tile_size=tile_size,
         )
+
+        if forbidden_mask is not None and _tile_overlaps_mask((y, x), forbidden_mask, tile_size):
+            continue
 
         tile = util.tile(input_img, (y, x), tile_size)
 

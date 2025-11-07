@@ -121,8 +121,9 @@ def test_extract_tile_simple():
     """
     Simple check to see if we can extract a 2x2 tile from a 2x2 image
     (i.e. do we just get the whole image back)
-    """
 
+    I think this test accidentally does the same thing as test_extract_tiles_no_criterion
+    """
     # The mock RNG returns 0, 0 first
     img = np.arange(4).reshape((2, 2))
     np.testing.assert_array_equal(
@@ -143,6 +144,8 @@ def test_extract_tile_simple():
 def test_extract_tile_simple_criterion():
     """
     Check that we can extract a tile if we provide a criterion function
+
+    I think this test accidentally does the same thing as test_extract_tiles_rms_criterion
     """
     # The mock RNG returns (0, 0) first, which we will reject,
     # and then returns (1, 1) which we will accept
@@ -237,6 +240,114 @@ def test_extract_tiles_rms_criterion(image):
     np.testing.assert_array_equal(tiles[1], expected[1])
     np.testing.assert_array_equal(tiles[2], expected[2])
     np.testing.assert_array_equal(tiles[3], expected[3])
+
+
+def test_bad_forbidden_mask():
+    """
+    Check we get the right errors if forbidden indices is the wrong shape
+    """
+    img = np.arange(9).reshape((3, 3))
+    with pytest.raises(ioutils.IOError):
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=None,
+            forbidden_mask=np.zeros([*img.shape, 1]),
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+    with pytest.raises(ioutils.IOError):
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=None,
+            forbidden_mask=np.zeros((4, 4)),
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+
+
+def test_tile_overlaps_mask():
+    """
+    Check we get the right values for checking the values in a tile taken from a mask
+    """
+    mask = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+        ],
+        dtype=bool,
+    )
+    assert ioutils._tile_overlaps_mask((0, 0), mask, 2)
+    assert ioutils._tile_overlaps_mask((1, 1), mask, 2)
+    assert ioutils._tile_overlaps_mask((1, 0), mask, 2)
+    assert not ioutils._tile_overlaps_mask((2, 2), mask, 2)
+
+
+def test_extract_tiles_forbidden_mask():
+    """
+    Check we extract the correct tiles if we pass in a mask of forbidden elements
+    """
+    # The mock RNG returns (0, 0) first, which we will reject,
+    # and then returns (1, 1) which we will accept
+    img = np.arange(9).reshape((3, 3))
+    expected_tile = np.reshape([[4, 5], [7, 8]], (2, 2))
+    forbidden_mask = np.array(
+        [
+            [1, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ],
+        dtype=bool,
+    )
+
+    np.testing.assert_array_equal(
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=None,
+            forbidden_mask=forbidden_mask,
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+        [expected_tile],
+    )
+
+    # Try it again with a different mask
+    # Should get the same result since we will still reject the first tile
+    forbidden_mask = np.array(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 0, 0],
+        ],
+        dtype=bool,
+    )
+    np.testing.assert_array_equal(
+        ioutils.extract_tiles(
+            MockRNG(),
+            img,
+            num_tiles=1,
+            tile_criterion=None,
+            forbidden_mask=forbidden_mask,
+            max_latitude=np.inf,
+            tile_size=2,
+            allow_nan=False,
+            return_indices=False,
+        ),
+        [expected_tile],
+    )
 
 
 def test_tile_rms():
