@@ -28,6 +28,7 @@ core = [
     "numpy>=2.2.6",
     "pandas>=2.3.2",
     "monai>=1.5.1",
+    "albumentationsx>=2.0.13",
 ]
 
 # Test dependencies - a minimal set of dependencies that let us run the tests
@@ -41,6 +42,7 @@ test = [
     "scikit-image>=0.25.2",
     "matplotlib>=3.10.3",
     "pandas>=2.3.2",
+    "albumentationsx>=2.0.13",
 ]
 
 # Formatting, linting, etc.

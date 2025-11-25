@@ -2,7 +2,11 @@
 Training data and augmentations for the denoising model
 """
 
+from dataclasses import dataclass
+
 import numpy as np
+import torch
+import albumentations
 
 from ..generation.ioutils import _tile_index
 from ..generation.applying_noise import add_noise
@@ -18,6 +22,84 @@ class DataError(Exception):
 class BadNoiseTileError(DataError):
     """
     Noise tiles are bad shapes
+    """
+
+
+class DatasetError(DataError):
+    """
+    Error initialising the dataset/dataloader
+    """
+
+
+class DenoisingDataset(torch.utils.data.Dataset):
+    """
+    Dataset for the denoising - pairs of clean/noisy tiles
+    """
+
+    def __init__(self, clean: np.ndarray, noisy: np.ndarray, augment: bool):
+        """
+        Initialise the data
+        """
+        if clean.shape != noisy.shape:
+            raise DatasetError(f"{clean.shape=} but {noisy.shape=}")
+
+        # Add channel dimensions
+        self.clean = clean
+        self.noisy = noisy
+
+        # No-op if no transformations (e.g. for testing/validation)
+        self.augmentations = (
+            albumentations.Compose(
+                [
+                    albumentations.HorizontalFlip(p=0.5),
+                    albumentations.VerticalFlip(p=0.5),
+                    # This still gives us 25% chance for no rotation
+                    albumentations.RandomRotate90(p=1),
+                ],
+                additional_targets={"noisy": "image"},
+            )
+            if augment
+            else None
+        )
+
+    def __len__(self):
+        return len(self.clean)
+
+    def __getitem__(self, idx: int):
+        """
+        Returns clean/noisy
+        """
+        clean = self.clean[idx]
+        noisy = self.noisy[idx]
+
+        if self.augmentations is not None:
+            augmented = self.augmentations(image=clean, noisy=noisy)
+            clean = augmented["image"]
+            noisy = augmented["noisy"]
+
+        clean = torch.from_numpy(clean).float().unsqueeze(0)
+        noisy = torch.from_numpy(noisy).float().unsqueeze(0)
+
+        return clean, noisy
+
+
+@dataclass
+class DataConfig:
+    """
+    Configuration for dataloader/dataset.
+    """
+
+    train: bool
+    """ Whether this dataset will be used for training"""
+
+    batch_size: int
+    """ Batch size """
+
+    num_workers: int
+    """
+    Number of subprocesses to use for dataloading.
+
+    0 loads data in the main process.
     """
 
 
@@ -108,3 +190,34 @@ def get_training_pairs(
         noisy_tiles.append(noisy)
 
     return np.stack([np.array(clean_tiles), np.array(noisy_tiles)], axis=1)
+
+
+def dataloader(clean_tiles: np.ndarray, noisy_tiles: np.ndarray, config: DataConfig):
+    """
+    Dataloader for the denoiser.
+
+    :param clean_tiles, noisy_tiles: NxDxD shaped clean/noisy images
+    :param config: extra information needed to trin the model
+
+    """
+    if clean_tiles.shape != noisy_tiles.shape:
+        raise DatasetError(f"{clean_tiles.shape=} but {noisy_tiles.shape=}")
+
+    # Only augment training data
+    dataset = DenoisingDataset(clean_tiles, noisy_tiles, augment=config.train)
+
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        # Only shuffle the training set
+        shuffle=config.train,
+        # Only drop the last incomplete batch (if one exists) during training
+        # might help stablise training by making all batches the same size
+        drop_last=config.train,
+        # Pinning memory is faster on GPU (probably), and doesn't really
+        # make a difference when we're on CPU so always do it
+        pin_memory=True,
+        # Only keep the worker processes around if we're using them
+        num_workers=config.num_workers,
+        persistent_workers=config.num_workers > 0,
+    )

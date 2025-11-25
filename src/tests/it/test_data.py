@@ -165,3 +165,79 @@ def test_training_pairs():
 
     result = data.get_training_pairs(map, noise_strength_map, noise_tiles, np.inf, rng)
     np.testing.assert_allclose(result, expected_output)
+
+
+def test_dataloader():
+    """
+    Check we can get some tiles out
+    """
+    tiles = np.empty((4, 3, 3))
+
+    config = data.DataConfig(train=True, batch_size=2, num_workers=2)
+    loader = data.dataloader(tiles, tiles, config)
+
+    clean, noisy = next(iter(loader))
+    assert clean.shape == (2, 1, 3, 3)
+
+    # Larger batch size than dataset, should get the whole thing
+    # since we're not training and don't drop incomplete batches
+    config = data.DataConfig(train=False, batch_size=5, num_workers=0)
+    loader = data.dataloader(tiles, tiles, config)
+
+    clean, noisy = next(iter(loader))
+    assert clean.shape == (4, 1, 3, 3)
+
+
+def test_data_augmentations():
+    """
+    Check that the training data is augmented (and test data isn't)
+    """
+    n_repeats = 100
+    tiles = np.tile(np.arange(4).reshape((2, 2)), (n_repeats, 1, 1))
+    train_loader = data.dataloader(
+        tiles, tiles, data.DataConfig(train=True, batch_size=5, num_workers=0)
+    )
+
+    expected_train_tiles = np.array(
+        [
+            [
+                [0, 1],  # Original
+                [2, 3],
+            ],
+            [
+                [2, 0],  # Rotated
+                [3, 1],
+            ],
+            [
+                [3, 2],  # Rotated twice
+                [1, 0],
+            ],
+            [
+                [1, 0],  # Flipped
+                [3, 2],
+            ],
+        ]
+    )
+
+    train_tiles_found = [False, False, False, False]
+    for actual, _ in train_loader:
+        batch = actual.squeeze(1).numpy()
+
+        for i, expected in enumerate(expected_train_tiles):
+            matches = (batch == expected).all(axis=(1, 2))
+            if matches.any():
+                train_tiles_found[i] = True
+
+    assert all(train_tiles_found)
+
+    expected = np.array(
+        [
+            [0, 1],
+            [2, 3],
+        ]
+    )
+    val_loader = data.dataloader(
+        tiles, tiles, data.DataConfig(train=False, batch_size=5, num_workers=0)
+    )
+    for actual, _ in val_loader:
+        assert (actual.squeeze(1).numpy() == expected).all()
