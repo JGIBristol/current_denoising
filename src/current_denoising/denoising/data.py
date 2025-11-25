@@ -31,6 +31,12 @@ class DatasetError(DataError):
     """
 
 
+class NaNError(DataError):
+    """
+    Error with NaNs in the data
+    """
+
+
 class DenoisingDataset(torch.utils.data.Dataset):
     """
     Dataset for the denoising - pairs of clean/noisy tiles
@@ -42,6 +48,14 @@ class DenoisingDataset(torch.utils.data.Dataset):
         """
         if clean.shape != noisy.shape:
             raise DatasetError(f"{clean.shape=} but {noisy.shape=}")
+
+        # Replace NaNs in the data with 0
+        clean_nans = np.isnan(clean)
+        noisy_nans = np.isnan(noisy)
+        if (clean_nans != noisy_nans).any():
+            raise NaNError(f"Got different NaNs")
+        clean[clean_nans] = 0
+        noisy[noisy_nans] = 0
 
         # Add channel dimensions
         self.clean = clean

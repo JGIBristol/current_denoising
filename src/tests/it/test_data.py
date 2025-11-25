@@ -188,6 +188,40 @@ def test_dataloader():
     assert clean.shape == (4, 1, 3, 3)
 
 
+def test_dataloader_invalid_nans():
+    """
+    Check that if we have different NaNs in clean/noisy data, we get an error
+    """
+    clean = np.empty((4, 3, 3))
+    noisy = clean.copy()
+
+    clean[1, 0] = np.nan
+    noisy[0, 1] = np.nan
+
+    with pytest.raises(data.NaNError):
+        data.dataloader(
+            clean, noisy, data.DataConfig(train=True, batch_size=2, num_workers=2)
+        )
+
+
+def test_dataloader_nans():
+    """
+    Check that NaNs are replaced with 0
+    """
+    tiles = np.empty((4, 3, 3))
+    tiles[:, 1, 0] = np.nan
+
+    config = data.DataConfig(train=False, batch_size=2, num_workers=2)
+    loader = data.dataloader(tiles, tiles, config)
+
+    clean, noisy = next(iter(loader))
+    assert clean.shape == (2, 1, 3, 3)
+    assert (clean[:, 0, 1, 0] == 0.0).all()
+
+    assert noisy.shape == (2, 1, 3, 3)
+    assert (noisy[:, 0, 1, 0] == 0.0).all()
+
+
 def test_data_augmentations():
     """
     Check that the training data is augmented (and test data isn't)
