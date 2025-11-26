@@ -25,23 +25,20 @@ def plot_losses(
 
     epochs = np.arange(len(loss1))
 
-    loss1 = np.array([np.mean(epoch_loss) for epoch_loss in loss1])
-    loss2 = np.array([np.mean(epoch_loss) for epoch_loss in loss2])
-
     if axis is None:
         fig, axis = plt.subplots()
     else:
         fig = axis.get_figure()
 
-    axis.plot(epochs, loss1, label=label1, color="C0")
-    axis.plot(epochs, loss2, label=label2, color="C1")
+    axis.plot(epochs, np.mean(loss1, axis=1), label=label1, color="C0")
+    axis.plot(epochs, np.mean(loss2, axis=1), label=label2, color="C1")
 
     # Find quartiles - the mean might be outside this, which would be interesting wouldn't it
-    loss1_upper = [np.percentile(epoch_loss, 75) for epoch_loss in loss1]
-    loss1_lower = [np.percentile(epoch_loss, 25) for epoch_loss in loss1]
+    loss1_upper = np.percentile(loss1, 75, axis=1)
+    loss1_lower = np.percentile(loss1, 25, axis=1)
 
-    loss2_upper = [np.percentile(epoch_loss, 75) for epoch_loss in loss2]
-    loss2_lower = [np.percentile(epoch_loss, 25) for epoch_loss in loss2]
+    loss2_upper = np.percentile(loss2, 75, axis=1)
+    loss2_lower = np.percentile(loss2, 25, axis=1)
 
     axis.fill_between(epochs, loss2_lower, loss2_upper, alpha=0.5, color="C1")
     axis.fill_between(epochs, loss1_lower, loss1_upper, alpha=0.5, color="C0")
