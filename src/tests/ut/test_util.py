@@ -220,3 +220,19 @@ def test_no_axis_arg_in_fcn():
 
     with pytest.raises(util.UtilError):
         util.apply_to_sliding_window(arr, lambda x: np.max(x), 2)
+
+
+def test_latlong2index():
+    """
+    Check we can get the right indices for a lat/long grid.
+    """
+    # 5-degree grid
+    array = np.arange(72 * 144).reshape((72, 144))
+
+    # The closest grid point here should be at the index [1, 1]
+    lat, long = 86, -176
+
+    index = util.latlong2index(lat, long, array.shape)
+
+    assert index == (1, 1)
+    assert array[index] == 145

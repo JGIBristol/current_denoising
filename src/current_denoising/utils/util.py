@@ -35,6 +35,28 @@ def grid_point_size(height: int, width: int) -> tuple[float, float]:
     return lat_point_size, long_point_size
 
 
+def latlong2index(
+    lat: float, long: float, grid_size: tuple[int, int]
+) -> tuple[int, int]:
+    """
+    Convert a latitude and longitude to indices on a whole-Earth grid of the specified size.
+
+    :param lat: latitude
+    :param long:
+    :param grid_size: the shape of the grid array, e.g. (1440, 720) for a quarter-degree grid.
+
+    :returns: indices corresponding to the closest grid point at the provided latitude and longitude.
+    """
+    lats, longs = lat_long_grid(grid_size)
+
+    # Reverse lats since the grid runs south -> north but the
+    # image is stored north -> south
+    lat_idx = int(np.argmin(np.abs(-lats - lat)))
+    long_idx = int(np.argmin(np.abs(longs - long)))
+
+    return (lat_idx, long_idx)
+
+
 def tile(input_img: np.ndarray, start: tuple[int, int], size: int) -> np.ndarray:
     """
     Extract a tile at the provided location + size from a 2d array
@@ -81,10 +103,7 @@ def get_tile(
             f"Requested lat/long {co_ords} is out of range (+-90, +-180)"
         )
 
-    lats, longs = lat_long_grid(square_grid.shape)
-
-    lat_idx = int(np.argmin(np.abs(-lats - lat)))
-    long_idx = int(np.argmin(np.abs(longs - long)))
+    lat_idx, long_idx = latlong2index(lat, long, square_grid.shape)
 
     # Convert tile size in degrees to number of grid points
     extent = int(tile_size / lat_point_size)
