@@ -96,7 +96,7 @@ def train_model(
     :returns: training losses as an [n_epochs, n_batches] shaped numpy array
     :returns: validation losses as an [n_epochs, n_batches] shaped numpy array
     """
-    optim = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optim = torch.optim.Adam(model.parameters(), lr=0.00005)
     loss = torch.nn.MSELoss()
 
     model.to(device)
