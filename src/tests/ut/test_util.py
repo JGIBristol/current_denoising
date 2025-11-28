@@ -236,3 +236,95 @@ def test_latlong2index():
 
     assert index == (1, 1)
     assert array[index] == 145
+
+
+def test_tile_too_big():
+    """
+    Check we get the right error if we request tiles that are larger than our input grid
+    """
+    grid = np.empty((4, 8))
+
+    # Bigger than both dims
+    with pytest.raises(util.TileError):
+        util.split_into_tiles(grid, 10)
+
+    # Bigger than only one dim
+    with pytest.raises(util.TileError):
+        util.split_into_tiles(grid, 5)
+
+
+def test_split_tiles_exact():
+    """
+    Check we can split a grid into tiles that fit exactly
+    """
+    grid = np.arange(16).reshape((4, 4))
+    expected_tiles = np.array(
+        [
+            [
+                [0, 1],
+                [4, 5],
+            ],
+            [
+                [2, 3],
+                [6, 7],
+            ],
+            [
+                [8, 9],
+                [12, 13],
+            ],
+            [
+                [10, 11],
+                [14, 15],
+            ],
+        ]
+    )
+
+    expected_locs = np.array([(0, 0), (0, 2), (2, 0), (2, 2)])
+
+    tiles, locs = util.split_into_tiles(grid, 2)
+
+    np.testing.assert_equal(tiles, expected_tiles)
+    np.testing.assert_equal(locs, expected_locs)
+
+
+def test_split_tiles_crop():
+    """
+    Check we can split a grid into tiles that doesn't fit exactly
+    """
+    # 3x3 tiles, 5x10 grid
+    grid = np.arange(50).reshape((5, 10))
+    expected_tiles = np.array(
+        [
+            [
+                [0, 1, 2],
+                [10, 11, 12],
+                [20, 21, 22],
+            ],
+            [
+                [3, 4, 5],
+                [13, 14, 15],
+                [23, 24, 25],
+            ],
+            [
+                [6, 7, 8],
+                [16, 17, 18],
+                [26, 27, 28],
+            ],
+        ]
+    )
+    expected_locs = np.array([(0, 0), (0, 3), (0, 6)])
+
+    tiles, locs = util.split_into_tiles(grid, 3)
+
+    np.testing.assert_array_equal(tiles, expected_tiles)
+    np.testing.assert_array_equal(locs, expected_locs)
+
+
+def test_split_tiles_shares_memory():
+    """
+    Check that the underlying array has been copied
+    """
+    grid = np.arange(16).reshape((4, 4))
+    split, _ = util.split_into_tiles(grid, 2)
+
+    assert not np.shares_memory(grid, split)

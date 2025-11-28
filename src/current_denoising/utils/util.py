@@ -20,6 +20,10 @@ class LatLongError(UtilError):
     """General exception for latitude/longitude calculation errors"""
 
 
+class TileError(UtilError):
+    """Something went wrong splitting into tiles"""
+
+
 def grid_point_size(height: int, width: int) -> tuple[float, float]:
     """
     Calculate the size of each grid point in degrees, given the shape of the grid.
@@ -209,3 +213,56 @@ def apply_to_sliding_window(
         mode="constant",
         constant_values=np.nan,
     )
+
+
+def split_into_tiles(
+    input_img: np.ndarray, tile_size: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Crop and reshape an (N, M) shaped image into an (K, tile_size, tile_size) array,
+    cropping the image on its right and bottom edges.
+
+    Splits the image into non-overlapping square tiles; doesn't share memory with the
+    underlying array.
+    Returns an array holding the 2d tiles, and also the indices giving their original
+    locations (using their top-left corner) so the input image can be reconstructed from the tiles.
+
+    :param input_img: the input grided field (e.g. an MDT) to split into tiles.
+    :param tile_size: the side length of the tile to split the image into.
+
+    :returns: an (k, tile_size, tile_size) reshaped array.
+    :returns: a list of indices giving the location in `input_img` of the top-left corner of each tile
+    :raises TileError: if the tile size is larger than the input (along any axis), if the
+                       input image is not 2d or if `tile_size` is not an integer.
+    """
+    if input_img.ndim != 2:
+        raise TileError(f"Got {input_img.shape=}")
+    if any((tile_size > s for s in input_img.shape)):
+        raise TileError(f"Got {input_img.shape=} but {tile_size=}; tiles too big")
+
+    # Otherwise the reshape might break
+    if not isinstance(tile_size, int):
+        raise TileError(f"`tile_size` must be an integer, got {type(tile_size)=}")
+
+    n_vert = input_img.shape[0] // tile_size
+    n_horiz = input_img.shape[1] // tile_size
+
+    # Crop the array to the right size
+    cropped_img = input_img[0 : n_vert * tile_size, 0 : n_horiz * tile_size]
+
+    # Get the locations of the tiles
+    rr, cc = np.meshgrid(
+        np.arange(0, n_vert * tile_size, tile_size),
+        np.arange(0, n_horiz * tile_size, tile_size),
+        indexing="ij",
+    )
+    locations = np.column_stack((rr.ravel(), cc.ravel()))
+
+    # Get the tiles
+    tiles = (
+        cropped_img.reshape((n_vert, tile_size, n_horiz, tile_size))
+        .swapaxes(1, 2)
+        .reshape(n_vert * n_horiz, tile_size, tile_size)
+    )
+
+    return tiles, locations
