@@ -415,6 +415,34 @@ def _tile_overlaps_mask(
     return util.tile(mask, index, tile_size).any()
 
 
+def _add_forbidden_latitudes_to_mask(
+    forbidden_mask: np.ndarray, latitude_threshhold: float
+) -> np.ndarray:
+    """
+    We mark which regions we don't want to extract tiles from using a boolean mask.
+
+    We might also want to specify that we don't want to extract tiles above or below
+    a certain latitude - an easy way to deal with both of these is to allow the user
+    to specify:
+     - a forbidden mask (which might be constructed based on e.g. the locations
+    of land)
+     - a threshhold latitude above/below which we don't want to extract tiles
+
+    And then we will just set the right values in the forbidden mask to True if they are in
+    the forbidden region.
+
+    """
+    lats, _ = util.lat_long_grid(forbidden_mask.shape)
+
+    lat_mask = np.abs(lats) >= latitude_threshhold
+    lat_mask = np.repeat(lat_mask[:, None], forbidden_mask.shape[1], axis=1)
+
+    updated_mask = forbidden_mask.copy()
+    updated_mask[lat_mask] = True
+
+    return updated_mask
+
+
 def extract_tiles(
     rng: np.random.Generator,
     input_img: np.ndarray,

@@ -55,6 +55,34 @@ def sinusoid_image() -> np.ndarray:
     return image
 
 
+def test_add_lat_to_forbidden_mask():
+    """
+    Check we correctly add areas in the right latitude region to the forbidden mask
+    """
+    # We'll use a 2.5 degree grid
+    grid_shape = (72, 144)
+
+    # Ignore stuff above 80 deg
+    # This mean we expect the bottom and top 4 rows to be True
+    lat_threshold = 80
+
+    forbidden_mask = np.random.random(grid_shape) < 0.5
+
+    # It's possible, but unlikely, that we've randomly assigned these all to True already...
+    assert not forbidden_mask[:4].all()
+
+    processed_mask = ioutils._add_forbidden_latitudes_to_mask(forbidden_mask, lat_threshold)
+    assert processed_mask[:4].all()
+    assert processed_mask[-4:].all()
+
+    # Check again with a latitude that's right on the boundary
+    lat_threshold = 81.25
+
+    processed_mask = ioutils._add_forbidden_latitudes_to_mask(forbidden_mask, lat_threshold)
+    assert processed_mask[:4].all()
+    assert processed_mask[-4:].all()
+
+
 def test_extract_tiles_invalid_image_dim():
     """
     Check we get the right error if we pass a 1D or 3D image
