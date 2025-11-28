@@ -432,6 +432,9 @@ def _add_forbidden_latitudes_to_mask(
     the forbidden region.
 
     """
+    if latitude_threshhold <= 0:
+        raise IOError("Maximum latitude must be > 0")
+
     lats, _ = util.lat_long_grid(forbidden_mask.shape)
 
     lat_mask = np.abs(lats) >= latitude_threshhold
@@ -444,10 +447,8 @@ def _add_forbidden_latitudes_to_mask(
 
 
 def extract_tiles(
-    rng: np.random.Generator,
     input_img: np.ndarray,
     *,
-    num_tiles: int,
     tile_criterion: Callable[[np.ndarray], bool] | None = None,
     forbidden_mask: np.ndarray | None = None,
     max_latitude: float = 64.0,
@@ -456,15 +457,18 @@ def extract_tiles(
     return_indices: bool = False,
 ) -> np.ndarray:
     """
-    Randomly extract tiles from an input image.
+    Extract non-overlapping tiles from an input image.
 
-    Tiles are selected such that no part of any tile exceeds the provided maximum latitude;
-    this assumes the input image is centred on the equator and ranges from -90 to 90 degrees latitude.
+    Returns all non-overlapping square tiles of the specified size from the input image, subject to
+    some criteria:
+     - `tile_criterion`: a boolean function that takes a tile and makes a decision from it.
+     - `forbidden_mask`: a boolean mask that tells us which elements are forbidden (True) and allowed (False).
+     - `max_latitude`: the latitude above which no part of the tile can fall. Also excludes latitudes below
+                       `-1 * max_latitude`. Assumes the input image is centred on the equator and ranges from
+                       -90 to 90 degrees latitude.
 
-    :param rng: a seeded numpy random number generator
     :param input_img: The input image from which to extract tiles.
     :param tile_size: The size of each tile.
-    :param num_tiles: The number of tiles to extract.
     :param tile_criterion: If specified, a function that takes a tile and returns a bool, telling us whether
                            to keep the tile.
     :param forbidden_mask: an array telling us elements we don't want to include in our output masks.
@@ -476,7 +480,7 @@ def extract_tiles(
     :param return_indices: whether to also return the location of each tile. Useful for plotting.
 
     :returns: A numpy array containing the extracted tiles, shaped (num_tiles, tile_size, tile_size).
-    :returns: if `return_indices`, returns the location of each tile as well
+    :returns: if `return_indices`, returns the location of each tile as well as raw indices, suitable for indexing into `input_image`.
     :raises IOError: if `forbidden_mask` has a different shape to `input_img`.
     :raises IOError: if the input image is not 2d
     :raises IOError: if the input image is smaller than the tile size
@@ -492,47 +496,29 @@ def extract_tiles(
             f"Mask shape must match img, got {input_img.shape=}; {forbidden_mask.shape=}"
         )
 
-    # Choose the range of indices to pick from
-    height_range = slice(0, input_img.shape[0] - tile_size + 1)
-    width_range = slice(0, input_img.shape[1] - tile_size + 1)
+    # Add the forbidden latitudes to the mask, and NaN values if specified
+    if forbidden_mask is None:
+        forbidden_mask = np.zeros_like(input_img, dtype=bool)
+    forbidden_mask = _add_forbidden_latitudes_to_mask(forbidden_mask, max_latitude)
 
-    tiles = np.empty((num_tiles, tile_size, tile_size), dtype=input_img.dtype)
-    indices_found = 0
-    indices = []
+    if not allow_nan:
+        nan_mask = np.isnan(input_img)
+        forbidden_mask[nan_mask] = True
 
-    while indices_found < num_tiles:
-        y, x = _tile_index(
-            rng,
-            input_size=input_img.shape,
-            max_latitude=max_latitude,
-            tile_size=tile_size,
-        )
+    # Extract all tiles from the image and mask
+    tiles, indices = util.split_into_tiles(input_img, tile_size)
+    masks, _ = util.split_into_tiles(forbidden_mask, tile_size)
+    assert (indices == _).all(), "this should not be possible"
 
-        if forbidden_mask is not None and _tile_overlaps_mask(
-            (y, x), forbidden_mask, tile_size
-        ):
+    # Loop through, checking the forbidden mask, for NaN, and the criterion
+    indices_to_delete = []
+    for i, (tile, mask) in enumerate(zip(tiles, masks, strict=True)):
+        if np.any(mask) or (tile_criterion is not None and not tile_criterion(tile)):
+            indices_to_delete.append(i)
             continue
 
-        tile = util.tile(input_img, (y, x), tile_size)
-
-        if tile.shape != (tile_size, tile_size):
-            raise IOError(
-                f"Extracted tile has wrong shape {tile.shape}, expected {(tile_size, tile_size)}"
-            )
-
-        if not allow_nan and np.isnan(tile).any():
-            continue
-
-        # We might want to discard this tile
-        if tile_criterion is not None and not tile_criterion(tile):
-            continue
-
-        # We did it! we found a tile to keep
-        # Store the tile + increment the counter
-        tiles[indices_found] = tile
-        if return_indices:
-            indices.append((y, x))
-        indices_found += 1
+    tiles = np.delete(tiles, indices_to_delete, axis=0)
+    indices = np.delete(indices, indices_to_delete, axis=0)
 
     if return_indices:
         return tiles, indices

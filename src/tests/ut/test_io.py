@@ -91,13 +91,12 @@ def test_extract_tiles_invalid_image_dim():
     """
     Check we get the right error if we pass a 1D or 3D image
     """
-    num_tiles = 1
     tile_size = 8
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(None, np.empty((32, 32, 3)), num_tiles=num_tiles)
+        ioutils.extract_tiles(np.empty((32, 32, 3)))
 
     with pytest.raises(ioutils.IOError, match="Input image must be 2d"):
-        ioutils.extract_tiles(None, np.empty(32), num_tiles=num_tiles)
+        ioutils.extract_tiles(np.empty(32))
 
 
 def test_extract_tiles_large_tiles():
@@ -105,10 +104,10 @@ def test_extract_tiles_large_tiles():
     Check we get the right error if we pass a large tile size
     """
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(None, np.empty((128, 32)), num_tiles=1, tile_size=64)
+        ioutils.extract_tiles(np.empty((128, 32)), tile_size=64)
 
     with pytest.raises(ioutils.IOError):
-        ioutils.extract_tiles(None, np.empty((32, 128)), num_tiles=1, tile_size=64)
+        ioutils.extract_tiles(np.empty((32, 128)), tile_size=64)
 
 
 def test_extract_indices(rng):
@@ -126,29 +125,6 @@ def test_extract_indices(rng):
     assert actual_indices == expected_indices
 
 
-class MockRNG:
-    """
-    Used to mock an RNG - returns a specified sequence of integers
-    """
-
-    def __init__(self):
-        # These are the indices we'll return
-        self.indices = [(0, 0), (1, 1), (2, 3), (2, 5), (0, 0)]
-        self.return_y = True
-        self.index = 0
-
-    def integers(self, *args) -> int:
-        if self.return_y:
-            self.return_y = False
-            return self.indices[self.index][0]
-        else:
-            self.return_y = True
-            self.index += 1
-            return self.indices[self.index - 1][1]
-        # We shouldn't get here in any of our tests...
-        raise
-
-
 def test_extract_tile_simple():
     """
     Simple check to see if we can extract a 2x2 tile from a 2x2 image
@@ -156,13 +132,10 @@ def test_extract_tile_simple():
 
     I think this test accidentally does the same thing as test_extract_tiles_no_criterion
     """
-    # The mock RNG returns 0, 0 first
     img = np.arange(4).reshape((2, 2))
     np.testing.assert_array_equal(
         ioutils.extract_tiles(
-            MockRNG(),
             img,
-            num_tiles=1,
             tile_criterion=None,
             max_latitude=np.inf,
             tile_size=2,
@@ -179,24 +152,21 @@ def test_extract_tile_simple_criterion():
 
     I think this test accidentally does the same thing as test_extract_tiles_rms_criterion
     """
-    # The mock RNG returns (0, 0) first, which we will reject,
-    # and then returns (1, 1) which we will accept
-    img = np.arange(9).reshape((3, 3))
-    expected_tile = np.reshape([[4, 5], [7, 8]], (2, 2))
+    # We will reject the first three tiles based on our criterion
+    img = np.arange(16).reshape((4, 4))
+    criterion = lambda tile: np.max(tile) == 15
 
-    np.testing.assert_array_equal(
-        ioutils.extract_tiles(
-            MockRNG(),
-            img,
-            num_tiles=1,
-            tile_criterion=lambda tile: np.max(tile) == 8,
-            max_latitude=np.inf,
-            tile_size=2,
-            allow_nan=False,
-            return_indices=False,
-        ),
-        [expected_tile],
+    expected_tiles = np.array([[[10, 11], [14, 15]]])
+    tiles = ioutils.extract_tiles(
+        img,
+        tile_criterion=criterion,
+        max_latitude=np.inf,
+        tile_size=2,
+        allow_nan=False,
+        return_indices=False,
     )
+
+    np.testing.assert_array_equal(tiles, expected_tiles)
 
 
 def test_extract_tiles_no_criterion(image):
@@ -204,34 +174,35 @@ def test_extract_tiles_no_criterion(image):
     Mocking the RNG to return a predefined sequence, see
     if we get the right tiles out
     """
-    num_tiles = 4
     tile_size = 2
 
-    # Mock the RNG by using this class which just returns some predefined
-    # co-ordinates in order
-    rng = MockRNG()
-
     tiles = ioutils.extract_tiles(
-        rng,
         image,
-        num_tiles=num_tiles,
         tile_size=tile_size,
         max_latitude=np.inf,
     )
 
-    assert len(tiles) == num_tiles
+    assert len(tiles) == 8
 
     expected = [
         image[0:2, 0:2],
-        image[1:3, 1:3],
-        image[2:4, 3:5],
-        image[2:4, 5:7],
+        image[0:2, 2:4],
+        image[0:2, 4:6],
+        image[0:2, 6:8],
+        image[2:4, 0:2],
+        image[2:4, 2:4],
+        image[2:4, 4:6],
+        image[2:4, 6:8],
     ]
 
     np.testing.assert_array_equal(tiles[0], expected[0])
     np.testing.assert_array_equal(tiles[1], expected[1])
     np.testing.assert_array_equal(tiles[2], expected[2])
     np.testing.assert_array_equal(tiles[3], expected[3])
+    np.testing.assert_array_equal(tiles[4], expected[4])
+    np.testing.assert_array_equal(tiles[5], expected[5])
+    np.testing.assert_array_equal(tiles[6], expected[6])
+    np.testing.assert_array_equal(tiles[7], expected[7])
 
 
 def test_extract_tiles_rms_criterion(image):
@@ -240,50 +211,44 @@ def test_extract_tiles_rms_criterion(image):
     which should make us skip one tile
     compared to test_extract_tiles_no_criterion
     """
-    num_tiles = 4
     tile_size = 2
 
-    # Mock the RNG by using this class which just returns some predefined
-    # co-ordinates in order
-    rng = MockRNG()
-
     tiles = ioutils.extract_tiles(
-        rng,
         image,
-        num_tiles=num_tiles,
         tile_criterion=lambda tile: ioutils.tile_rms(tile) < 24,
         tile_size=tile_size,
         max_latitude=np.inf,
     )
 
-    assert len(tiles) == num_tiles
+    # Expect all but one tile to get extracted
+    assert len(tiles) == 6
 
-    # Now we expect to reject the last tile, and instead the MockRNG
-    # will return (0, 0) as the fifth "random" number which gives us
-    # the first tile back again
     expected = [
         image[0:2, 0:2],
-        image[1:3, 1:3],
-        image[2:4, 3:5],
-        image[0:2, 0:2],
+        image[0:2, 2:4],
+        image[0:2, 4:6],
+        image[0:2, 6:8],
+        image[2:4, 0:2],
+        image[2:4, 2:4],
+        image[2:4, 4:6],
     ]
 
     np.testing.assert_array_equal(tiles[0], expected[0])
     np.testing.assert_array_equal(tiles[1], expected[1])
     np.testing.assert_array_equal(tiles[2], expected[2])
     np.testing.assert_array_equal(tiles[3], expected[3])
+    np.testing.assert_array_equal(tiles[4], expected[4])
+    np.testing.assert_array_equal(tiles[5], expected[5])
 
 
 def test_bad_forbidden_mask():
     """
-    Check we get the right errors if forbidden indices is the wrong shape
+    Check we get the right errors if forbidden_mask is the wrong shape
     """
     img = np.arange(9).reshape((3, 3))
     with pytest.raises(ioutils.IOError):
         ioutils.extract_tiles(
-            MockRNG(),
             img,
-            num_tiles=1,
             tile_criterion=None,
             forbidden_mask=np.zeros([*img.shape, 1]),
             max_latitude=np.inf,
@@ -293,9 +258,7 @@ def test_bad_forbidden_mask():
         ),
     with pytest.raises(ioutils.IOError):
         ioutils.extract_tiles(
-            MockRNG(),
             img,
-            num_tiles=1,
             tile_criterion=None,
             forbidden_mask=np.zeros((4, 4)),
             max_latitude=np.inf,
@@ -324,28 +287,59 @@ def test_tile_overlaps_mask():
     assert not ioutils._tile_overlaps_mask((2, 2), mask, 2)
 
 
+def test_extract_tiles_latitude():
+    """
+    Check we extract the correct tiles if we specify a latitude threshhold
+    """
+    # We'll use a 2.5 degree grid
+    grid_shape = (72, 144)
+    grid = np.arange(np.prod(grid_shape)).reshape(grid_shape)
+
+    # Ignore stuff above 80 deg
+    # This mean we expect the bottom and top 4 rows to be ignored
+    # Which gives us the below expected tiles
+    lat_threshold = 80
+    first_tile = [
+        [576, 577, 578, 579],
+        [720, 721, 722, 723],
+        [864, 865, 866, 867],
+        [1008, 1009, 1010, 1011],
+    ]
+    last_tile = [
+        [9356, 9357, 9358, 9359],
+        [9500, 9501, 9502, 9503],
+        [9644, 9645, 9646, 9647],
+        [9788, 9789, 9790, 9791],
+    ]
+
+    tiles = ioutils.extract_tiles(grid, tile_size=4, max_latitude=lat_threshold)
+
+    np.testing.assert_equal(tiles[0], first_tile)
+    np.testing.assert_equal(tiles[-1], last_tile)
+
+
 def test_extract_tiles_forbidden_mask():
     """
     Check we extract the correct tiles if we pass in a mask of forbidden elements
     """
-    # The mock RNG returns (0, 0) first, which we will reject,
-    # and then returns (1, 1) which we will accept
-    img = np.arange(9).reshape((3, 3))
-    expected_tile = np.reshape([[4, 5], [7, 8]], (2, 2))
+    img = np.arange(12).reshape((3, 4))
+    expected_tiles = np.array(
+        [
+            [[2, 3], [6, 7]],
+        ]
+    )
     forbidden_mask = np.array(
         [
-            [1, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
         ],
         dtype=bool,
     )
 
     np.testing.assert_array_equal(
         ioutils.extract_tiles(
-            MockRNG(),
             img,
-            num_tiles=1,
             tile_criterion=None,
             forbidden_mask=forbidden_mask,
             max_latitude=np.inf,
@@ -353,33 +347,43 @@ def test_extract_tiles_forbidden_mask():
             allow_nan=False,
             return_indices=False,
         ),
-        [expected_tile],
+        expected_tiles,
     )
 
-    # Try it again with a different mask
-    # Should get the same result since we will still reject the first tile
+
+def test_extract_tiles_indices():
+    """
+    Check we extract the correct indices if specified
+    """
+    img = np.arange(12).reshape((3, 4))
+    expected_tiles = np.array(
+        [
+            [[2, 3], [6, 7]],
+        ]
+    )
+    expected_indices = [(0, 2)]
+
     forbidden_mask = np.array(
         [
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
         ],
         dtype=bool,
     )
-    np.testing.assert_array_equal(
-        ioutils.extract_tiles(
-            MockRNG(),
-            img,
-            num_tiles=1,
-            tile_criterion=None,
-            forbidden_mask=forbidden_mask,
-            max_latitude=np.inf,
-            tile_size=2,
-            allow_nan=False,
-            return_indices=False,
-        ),
-        [expected_tile],
+
+    tiles, indices = ioutils.extract_tiles(
+        img,
+        tile_criterion=None,
+        forbidden_mask=forbidden_mask,
+        max_latitude=np.inf,
+        tile_size=2,
+        allow_nan=False,
+        return_indices=True,
     )
+
+    np.testing.assert_array_equal(tiles, expected_tiles)
+    np.testing.assert_equal(indices, expected_indices)
 
 
 def test_tile_rms():
@@ -396,11 +400,13 @@ def test_bad_max_latitude():
     """
     Check we get the right error if we pass a nonsensical value (i.e. <0) as the max latitude
     """
-    ioutils._included_indices(32, 2, 45)
+    mask = np.empty((3, 3))
+
+    ioutils._add_forbidden_latitudes_to_mask(mask, 45)
     with pytest.raises(ioutils.IOError):
-        ioutils._included_indices(32, 8, 0)
+        ioutils._add_forbidden_latitudes_to_mask(mask, 0)
     with pytest.raises(ioutils.IOError):
-        ioutils._included_indices(32, 8, -1)
+        ioutils._add_forbidden_latitudes_to_mask(mask, -1)
 
 
 def test_exclude_latitude_indices(tall_image):
@@ -425,6 +431,7 @@ def test_exclude_latitude_include_all(tall_image):
     """
     Check we get the entire range if our latitude is >90, or if the size of the tile pushes it >90
     """
+    # TODO change these to test _add_forbidden_latitudes_to_mask
     assert ioutils._included_indices(tall_image.shape[0], 2, 90.0) == (0, 17)
     assert ioutils._included_indices(tall_image.shape[0], 3, 100) == (0, 17)
 
@@ -434,6 +441,7 @@ def test_exclude_latitude_too_small(tall_image):
     Check the right error is raised if we exclude too many latitudes, such that the provided tile size
     can't be extracted
     """
+    # TODO add this check
     with pytest.raises(ioutils.IOError):
         ioutils._included_indices(tall_image.shape[0], 4, 15.0)
 
