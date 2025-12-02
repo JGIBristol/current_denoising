@@ -2,6 +2,7 @@
 Training data and augmentations for the denoising model
 """
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -129,6 +130,10 @@ def get_training_pairs(
     Get matched training pairs from a clean source gridded field, a map showing
     the global noise strength and an iterable of noise tiles.
 
+    Extracts all the tiles that meet the latitude + NaN fraction conditions from the
+    `clean_source` image; if not enough noise_tiles are provided to match these, a warning
+    will be issued.
+
     Rescales the noisy tile to better match the scale of the original tile than a naive
     addition - see `applying_noise.reweight_noisy_tile` for details.
     The `clean_source` array will probably be a gridded field of MDT residuals
@@ -189,12 +194,11 @@ def get_training_pairs(
     else:
         raise ValueError(f"got {type(noise_tiles)=}; must be list or array")
 
-    clean_tiles = []
-    noisy_tiles = []
-    for noise_tile in noise_tiles:
-        # Choose a location with the RNG, subject to our latitude condition
-        location = _tile_index(
-            rng, input_size=clean_source.shape, max_latitude=max_latitude, tile_size=d
+
+    if len(clean_tiles) > len(noise_tiles):
+        warnings.warn(
+            f"Extracted {len(clean_tiles)} tiles from clean data, but only {len(noise_tiles)} noise tiles were provided.\n"
+            "The remaining clean tiles will be discarded, which geographically biases the returned synthetic tiles."
         )
 
         # Get the pair of tiles at this location
