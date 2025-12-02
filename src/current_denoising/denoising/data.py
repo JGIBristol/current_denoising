@@ -122,6 +122,7 @@ def get_training_pairs(
     noise_strength_map: np.ndarray,
     noise_tiles: np.ndarray | list[np.ndarray],
     max_latitude: float,
+    max_nan_fraction: float,
     rng: np.random.Generator,
 ) -> np.ndarray:
     """
@@ -138,7 +139,7 @@ def get_training_pairs(
 
     :param clean_source: global gridded field to add noise to. Patches of the right
                          size will be randomly drawn from this, restricted to being within
-                         +- max latitude
+                         +- max latitude and subject to the criterion imposed by `nan_fraction`.
     :param noise_strength_map: an array of the same shape as `clean_source` which modulates
                                the noise values as they vary in space. Useful if we expect to
                                have higher noise in some areas than others.
@@ -147,8 +148,8 @@ def get_training_pairs(
                         size they should be. If a list, must contain square tiles of the same size;
                         if a numpy array, must have shape NxDxD.
     :param max_latitude: maximum latitude to extract tiles from.
-    :param rng: random number generator, used for selecting stochastic noise strength and
-                tile location.
+    :param max_nan_fraction: the maximum amount of NaN allowed in the tile.
+    :param rng: random number generator, used for selecting stochastic noise strength.
 
     :returns: an Nx2xDxD array of training pairs, [clean, noisy]
     :raises DataError: if the strength map + source data are different shapes
