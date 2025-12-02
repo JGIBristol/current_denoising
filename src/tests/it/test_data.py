@@ -230,6 +230,44 @@ def test_training_pairs_nan_fraction():
     )
 
 
+def test_training_pairs_max_lat():
+    """
+    Check we get the right training pairs out if we specify a maximum latitude
+    """
+    input_data = np.array(
+        [
+            [1, 2],
+            [1, 2],
+            [3, 4],  # We should pick out
+            [5, 6],  # this tile
+            [1, 2],
+            [1, 2],
+        ]
+    )
+    max_lat = 30
+
+    expected_tiles = np.array(
+        [
+            [
+                [[3, 4], [5, 6]],
+                [[3, 4], [5, 6]],
+            ]
+        ]
+    )
+
+    np.testing.assert_array_equal(
+        data.get_training_pairs(
+            input_data,
+            np.ones_like(input_data),
+            [np.array([[0, 0], [0, 0]])],
+            max_lat,
+            0.5,
+            MockRNG(),
+        ),
+        expected_tiles,
+    )
+
+
 def test_dataloader():
     """
     Check we can get some tiles out
