@@ -14,7 +14,9 @@ def test_training_pairs_wrong_sized_noise_map():
     Check we get the right error if the noise map + source field have different shapes
     """
     with pytest.raises(data.DataError):
-        data.get_training_pairs(np.empty((4, 8)), np.empty((5, 8)), None, None, None)
+        data.get_training_pairs(
+            np.empty((4, 8)), np.empty((5, 8)), None, None, 0.5, None
+        )
 
 
 def test_training_pair_bad_noise_tiles():
@@ -28,25 +30,25 @@ def test_training_pair_bad_noise_tiles():
     # List with inconsistent shapes
     with pytest.raises(data.BadNoiseTileError):
         data.get_training_pairs(
-            np.empty((4, 8)), np.empty((4, 8)), [tile2, tile3], None, None
+            np.empty((4, 8)), np.empty((4, 8)), [tile2, tile3], None, 0.5, None
         )
 
     # List with non-2d contents
     with pytest.raises(data.BadNoiseTileError):
         data.get_training_pairs(
-            np.empty((4, 8)), np.empty((4, 8)), [np.empty((2, 3, 3))], None, None
+            np.empty((4, 8)), np.empty((4, 8)), [np.empty((2, 3, 3))], None, 0.5, None
         )
 
     # List with non-square contents
     with pytest.raises(data.BadNoiseTileError):
         data.get_training_pairs(
-            np.empty((4, 8)), np.empty((4, 8)), [np.empty((3, 2))], None, None
+            np.empty((4, 8)), np.empty((4, 8)), [np.empty((3, 2))], None, 0.5, None
         )
 
     # Array containing non-square tiles
     with pytest.raises(data.BadNoiseTileError):
         data.get_training_pairs(
-            np.empty((4, 8)), np.empty((4, 8)), np.empty((3, 3, 2)), None, None
+            np.empty((4, 8)), np.empty((4, 8)), np.empty((3, 3, 2)), None, 0.5, None
         )
 
 
@@ -56,7 +58,7 @@ def test_training_pair_negative_maxlat():
     """
     with pytest.raises(ioutils.IOError):
         data.get_training_pairs(
-            np.empty((4, 8)), np.empty((4, 8)), np.empty((3, 3, 3)), -1, None
+            np.empty((4, 8)), np.empty((4, 8)), np.empty((3, 3, 3)), -1, 1.0, None
         )
 
 
@@ -130,12 +132,13 @@ def test_training_pairs():
         ),
     ]
 
-    # Expect the RNG to return (0, 0) and (1, 1) which should both be valid indices
-    # This gives us [[1,2],[1,2]] and [[2,3],[2,3]] as our clean inputs
-    # Our strength maps are [[2,1],[1,0]] and [[0, 1],[1,1]]
-    # The noise tiles are defined above, and the "stochastic" strength parameter is
-    # always 2.0 with our mock RNG
-    # Before scaling, this gives us expected noise tiles of [[5,2],[1,2]] and [[2,5],[2,3]]
+    # The first two tiles will be [[1, 2], [1, 2]] and [[3, 4], [3, 4]]
+    # Our strength maps are [[2, 1], [1, 0]] and [[1, 1], [1, 1]]
+    # The "stochastic" strength parameter is always 2.0 with our mock RNG, and the
+    # noise tiles are defined above
+    # Before scaling, this gives us expected noise tiles:
+    #     [[5,2],[1,2]]
+    #     [[7,6],[3,4]]
     # However, we scale the output to have a maximum halfway between the unscaled noisy tile
     # and the clean tile, which gives us the below
     expected_output = np.array(
@@ -152,18 +155,18 @@ def test_training_pairs():
             ],
             [
                 [
-                    [2, 3],
-                    [2, 3],
+                    [3, 4],
+                    [3, 4],
                 ],
                 [
-                    [1.6, 4],
-                    [1.6, 2.4],
+                    [5.5 * 7 / 7, 5.5 * 6 / 7],
+                    [5.5 * 3 / 7, 5.5 * 4 / 7],
                 ],
             ],
         ]
     )
 
-    result = data.get_training_pairs(map, noise_strength_map, noise_tiles, np.inf, rng)
+    result = data.get_training_pairs(map, noise_strength_map, noise_tiles, np.inf, 0.5, rng)
     np.testing.assert_allclose(result, expected_output)
 
 

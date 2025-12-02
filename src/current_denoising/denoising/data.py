@@ -159,6 +159,9 @@ def get_training_pairs(
     if clean_source.shape != noise_strength_map.shape:
         raise DataError(f"Got {clean_source.shape=} but {noise_strength_map.shape=}")
 
+    if not 0 <= max_nan_fraction <= 1:
+        raise ValueError(f"{max_nan_fraction=}")
+
     # List preconditions
     if isinstance(noise_tiles, list):
         if len({t.shape for t in noise_tiles}) != 1:
@@ -188,7 +191,6 @@ def get_training_pairs(
 
     clean_tiles = []
     noisy_tiles = []
-
     for noise_tile in noise_tiles:
         # Choose a location with the RNG, subject to our latitude condition
         location = _tile_index(
