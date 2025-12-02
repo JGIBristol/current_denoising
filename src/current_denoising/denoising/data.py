@@ -2,13 +2,14 @@
 Training data and augmentations for the denoising model
 """
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
 import torch
 import albumentations
 
-from ..generation.ioutils import _tile_index
+from ..generation.ioutils import extract_tiles
 from ..generation.applying_noise import add_noise
 from ..utils import util
 
@@ -122,11 +123,16 @@ def get_training_pairs(
     noise_strength_map: np.ndarray,
     noise_tiles: np.ndarray | list[np.ndarray],
     max_latitude: float,
+    max_nan_fraction: float,
     rng: np.random.Generator,
 ) -> np.ndarray:
     """
     Get matched training pairs from a clean source gridded field, a map showing
     the global noise strength and an iterable of noise tiles.
+
+    Extracts all the tiles that meet the latitude + NaN fraction conditions from the
+    `clean_source` image; if not enough noise_tiles are provided to match these, a warning
+    will be issued.
 
     Rescales the noisy tile to better match the scale of the original tile than a naive
     addition - see `applying_noise.reweight_noisy_tile` for details.
@@ -138,7 +144,7 @@ def get_training_pairs(
 
     :param clean_source: global gridded field to add noise to. Patches of the right
                          size will be randomly drawn from this, restricted to being within
-                         +- max latitude
+                         +- max latitude and subject to the criterion imposed by `nan_fraction`.
     :param noise_strength_map: an array of the same shape as `clean_source` which modulates
                                the noise values as they vary in space. Useful if we expect to
                                have higher noise in some areas than others.
@@ -147,8 +153,8 @@ def get_training_pairs(
                         size they should be. If a list, must contain square tiles of the same size;
                         if a numpy array, must have shape NxDxD.
     :param max_latitude: maximum latitude to extract tiles from.
-    :param rng: random number generator, used for selecting stochastic noise strength and
-                tile location.
+    :param max_nan_fraction: the maximum amount of NaN allowed in the tile.
+    :param rng: random number generator, used for selecting stochastic noise strength.
 
     :returns: an Nx2xDxD array of training pairs, [clean, noisy]
     :raises DataError: if the strength map + source data are different shapes
@@ -157,6 +163,9 @@ def get_training_pairs(
     """
     if clean_source.shape != noise_strength_map.shape:
         raise DataError(f"Got {clean_source.shape=} but {noise_strength_map.shape=}")
+
+    if not 0 <= max_nan_fraction <= 1:
+        raise ValueError(f"{max_nan_fraction=}")
 
     # List preconditions
     if isinstance(noise_tiles, list):
@@ -185,22 +194,41 @@ def get_training_pairs(
     else:
         raise ValueError(f"got {type(noise_tiles)=}; must be list or array")
 
-    clean_tiles = []
+    # Extract all the possible tiles from the clean data, given our latitude and nan
+    # fraction constraints
+    clean_tiles, clean_indices = extract_tiles(
+        clean_source,
+        tile_criterion=lambda tile: (np.sum(np.isnan(tile)) / tile.size)
+        < max_nan_fraction,
+        max_latitude=max_latitude,
+        tile_size=d,
+        allow_nan=True,
+        return_indices=True,
+    )
+
+    # We mostly expect the user to have provided more noise than necessary
+    if len(clean_tiles) < len(noise_tiles):
+        noise_tiles = noise_tiles[: len(clean_tiles)]
+
+    # But if not, we might want to throw some tiles away
+    # This might mean that we miss regions of the map, especially near the bottom
+    # and right of the gridded field, so warn the user of this
+    elif len(clean_tiles) > len(noise_tiles):
+        warnings.warn(
+            f"Extracted {len(clean_tiles)} tiles from clean data, but only {len(noise_tiles)} noise tiles were provided.\n"
+            "The remaining clean tiles will be discarded, which geographically biases the returned synthetic tiles."
+        )
+
+        clean_tiles = clean_tiles[: len(noise_tiles)]
+        clean_indices = clean_indices[: len(noise_tiles)]
+
     noisy_tiles = []
-
-    for noise_tile in noise_tiles:
-        # Choose a location with the RNG, subject to our latitude condition
-        location = _tile_index(
-            rng, input_size=clean_source.shape, max_latitude=max_latitude, tile_size=d
-        )
-
-        # Get the pair of tiles at this location
-        clean = util.tile(clean_source, location, d)
+    for clean_tile, index, noise_tile in zip(
+        clean_tiles, clean_indices, noise_tiles, strict=True
+    ):
         noisy = add_noise(
-            clean, noise_tile, util.tile(noise_strength_map, location, d), rng
+            clean_tile, noise_tile, util.tile(noise_strength_map, index, d), rng
         )
-
-        clean_tiles.append(clean)
         noisy_tiles.append(noisy)
 
     return np.stack([np.array(clean_tiles), np.array(noisy_tiles)], axis=1)

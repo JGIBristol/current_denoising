@@ -461,7 +461,7 @@ def extract_tiles(
 
     Returns all non-overlapping square tiles of the specified size from the input image, subject to
     some criteria:
-     - `tile_criterion`: a boolean function that takes a tile and makes a decision from it.
+     - `tile_criterion`: a boolean function that takes a tile and makes a decision on whether to keep it.
      - `forbidden_mask`: a boolean mask that tells us which elements are forbidden (True) and allowed (False).
      - `max_latitude`: the latitude above which no part of the tile can fall. Also excludes latitudes below
                        `-1 * max_latitude`. Assumes the input image is centred on the equator and ranges from
