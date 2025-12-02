@@ -206,7 +206,14 @@ def get_training_pairs(
         return_indices=True,
     )
 
-    if len(clean_tiles) > len(noise_tiles):
+    # We mostly expect the user to have provided more noise than necessary
+    if len(clean_tiles) < len(noise_tiles):
+        noise_tiles = noise_tiles[: len(clean_tiles)]
+
+    # But if not, we might want to throw some tiles away
+    # This might mean that we miss regions of the map, especially near the bottom
+    # and right of the gridded field, so warn the user of this
+    elif len(clean_tiles) > len(noise_tiles):
         warnings.warn(
             f"Extracted {len(clean_tiles)} tiles from clean data, but only {len(noise_tiles)} noise tiles were provided.\n"
             "The remaining clean tiles will be discarded, which geographically biases the returned synthetic tiles."
