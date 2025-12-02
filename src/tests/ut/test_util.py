@@ -328,3 +328,45 @@ def test_split_tiles_shares_memory():
     split, _ = util.split_into_tiles(grid, 2)
 
     assert not np.shares_memory(grid, split)
+
+
+def test_tiles_from_indices():
+    """
+    Check we can extract tiles from their location and index
+    """
+    input_array = np.arange(50).reshape((5, 10))
+    size = 2
+    indices = [(0, 0), (1, 1)]
+
+    expected_tiles = np.array(
+        [
+            [[0, 1], [10, 11]],
+            [[11, 12], [21, 22]],
+        ]
+    )
+
+    np.testing.assert_array_equal(util.tiles_from_indices(input_array, indices, size), expected_tiles)
+
+
+def test_tiles_from_indices_out_of_bounds():
+    """
+    Check that if we accidentally ask for a tile that is too
+    close to one of the edges such that it becomes cropped,
+    we get the right error
+    """
+    input_array = np.arange(50).reshape((5, 10))
+    size = 2
+
+    # Check we can get the bottom corner out without an error
+    np.testing.assert_array_equal(
+        util.tiles_from_indices(input_array, [(3, 8)], size),
+        np.array([[[38, 39], [48, 49]]])
+    )
+
+    # Too far right
+    with pytest.raises(util.TileError):
+        util.tiles_from_indices(input_array, [(0, 0), (0, 9)], size)
+
+    # Too low down
+    with pytest.raises(util.TileError):
+        util.tiles_from_indices(input_array, [(0, 0), (4, 0)], size)

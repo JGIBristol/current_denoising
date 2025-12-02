@@ -69,6 +69,35 @@ def tile(input_img: np.ndarray, start: tuple[int, int], size: int) -> np.ndarray
     return input_img[start[0] : start[0] + size, start[1] : start[1] + size]
 
 
+def tiles_from_indices(
+    input_img: np.ndarray, indices: list[tuple[float, float]], size: int
+) -> np.ndarray:
+    """
+    Extract a series of square tiles from an image,
+    given their size and the indices of their top-left corners.
+
+    :param input_img: the 2d numpy array to extract tiles from.
+    :param indices: the (y, x) co-ordinates of each tile's top left corner,
+                    in grid points
+    :param size: the side length of the tile, in grid points
+
+    :returns: an (N, size, size) shaped array holding the extracted tiles
+    :raises TileError: if any of the co-ordinates are too close to the edges
+                       such that the extracted tiles will come out the wrong shape
+    """
+    max_y = [i + size for i, _ in indices]
+    max_x = [j + size for _, j in indices]
+    if any(y > len(input_img) for y in max_y) or any(
+        x > input_img.shape[1] for x in max_x
+    ):
+        raise TileError(
+            f"Cannot extract {size} sized tiles from {input_img.shape} array\n"
+            f"\t indices:\n{indices}"
+        )
+
+    return np.stack([tile(input_img, i, size) for i in indices])
+
+
 def get_tile(
     square_grid: np.ndarray, co_ords: tuple[int, int], tile_size: int
 ) -> np.ndarray:
