@@ -2,6 +2,8 @@
 Tests for denoiser data preprocessing
 """
 
+import warnings
+
 import pytest
 import numpy as np
 
@@ -169,6 +171,25 @@ def test_training_pairs():
         map, noise_strength_map, noise_tiles, np.inf, 0.5, rng
     )
     np.testing.assert_allclose(result, expected_output)
+
+
+def test_training_pairs_warn_if_too_little_noise():
+    """
+    Check we get the right warning if we extract more tiles than we have noise
+    to apply to it
+    """
+    # We'll get 8 tiles from this, i think
+    # But will only provide 4 noise tiles
+    input_data = np.arange(50).reshape((5, 10))
+    with pytest.warns(UserWarning):
+        data.get_training_pairs(
+            input_data,
+            noise_strength_map=np.ones_like(input_data),
+            noise_tiles=np.ones((4, 2, 2)),
+            max_latitude=np.inf,
+            max_nan_fraction=0.5,
+            rng=MockRNG(),
+        )
 
 
 def test_dataloader():

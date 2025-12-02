@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import albumentations
 
-from ..generation.ioutils import _tile_index
+from ..generation.ioutils import extract_tiles
 from ..generation.applying_noise import add_noise
 from ..utils import util
 
@@ -194,6 +194,17 @@ def get_training_pairs(
     else:
         raise ValueError(f"got {type(noise_tiles)=}; must be list or array")
 
+    # Extract all the possible tiles from the clean data, given our latitude and nan
+    # fraction constraints
+    clean_tiles, clean_indices = extract_tiles(
+        clean_source,
+        tile_criterion=lambda tile: (np.sum(np.isnan(tile)) / tile.size)
+        < max_nan_fraction,
+        max_latitude=max_latitude,
+        tile_size=d,
+        allow_nan=True,
+        return_indices=True,
+    )
 
     if len(clean_tiles) > len(noise_tiles):
         warnings.warn(
@@ -201,13 +212,16 @@ def get_training_pairs(
             "The remaining clean tiles will be discarded, which geographically biases the returned synthetic tiles."
         )
 
-        # Get the pair of tiles at this location
-        clean = util.tile(clean_source, location, d)
-        noisy = add_noise(
-            clean, noise_tile, util.tile(noise_strength_map, location, d), rng
-        )
+        clean_tiles = clean_tiles[: len(noise_tiles)]
+        clean_indices = clean_indices[: len(noise_tiles)]
 
-        clean_tiles.append(clean)
+    noisy_tiles = []
+    for clean_tile, index, noise_tile in zip(
+        clean_tiles, clean_indices, noise_tiles, strict=True
+    ):
+        noisy = add_noise(
+            clean_tile, noise_tile, util.tile(noise_strength_map, index, d), rng
+        )
         noisy_tiles.append(noisy)
 
     return np.stack([np.array(clean_tiles), np.array(noisy_tiles)], axis=1)
