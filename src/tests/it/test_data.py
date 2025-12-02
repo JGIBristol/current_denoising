@@ -192,6 +192,44 @@ def test_training_pairs_warn_if_too_little_noise():
         )
 
 
+def test_training_pairs_nan_fraction():
+    """
+    Check we skip over tiles that contain too much NaN
+    """
+    input_data = np.array(
+        [[np.nan, 0, 1, 0], [np.nan, 0, 0, 1]],
+    )
+
+    noise_tiles = np.zeros((2, 2, 2))
+
+    expected_train_pairs = np.array(
+        [
+            [
+                [
+                    [1, 0],
+                    [0, 1],
+                ],
+                [
+                    [1, 0],
+                    [0, 1],
+                ],
+            ]
+        ],
+    )
+
+    np.testing.assert_array_equal(
+        data.get_training_pairs(
+            input_data,
+            np.ones_like(input_data),
+            noise_tiles,
+            max_latitude=np.inf,
+            max_nan_fraction=0.1,
+            rng=MockRNG(),
+        ),
+        expected_train_pairs,
+    )
+
+
 def test_dataloader():
     """
     Check we can get some tiles out
