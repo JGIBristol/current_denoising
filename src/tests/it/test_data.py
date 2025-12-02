@@ -75,21 +75,6 @@ class MockRNG:
         self.return_y = True
         self.index = 0
 
-    def integers(self, *args) -> int:
-        """
-        Alternate between returning a y-index and an x-index
-        since this is what our code expects...
-        """
-        if self.return_y:
-            self.return_y = False
-            return self.indices[self.index][0]
-        else:
-            self.return_y = True
-            self.index += 1
-            return self.indices[self.index - 1][1]
-        # We shouldn't get here in any of our tests...
-        raise
-
     def uniform(self, *args):
         return 2.0
 
@@ -166,7 +151,9 @@ def test_training_pairs():
         ]
     )
 
-    result = data.get_training_pairs(map, noise_strength_map, noise_tiles, np.inf, 0.5, rng)
+    result = data.get_training_pairs(
+        map, noise_strength_map, noise_tiles, np.inf, 0.5, rng
+    )
     np.testing.assert_allclose(result, expected_output)
 
 
