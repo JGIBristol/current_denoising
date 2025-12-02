@@ -345,7 +345,9 @@ def test_tiles_from_indices():
         ]
     )
 
-    np.testing.assert_array_equal(util.tiles_from_indices(input_array, indices, size), expected_tiles)
+    np.testing.assert_array_equal(
+        util.tiles_from_indices(input_array, indices, size), expected_tiles
+    )
 
 
 def test_tiles_from_indices_out_of_bounds():
@@ -360,7 +362,7 @@ def test_tiles_from_indices_out_of_bounds():
     # Check we can get the bottom corner out without an error
     np.testing.assert_array_equal(
         util.tiles_from_indices(input_array, [(3, 8)], size),
-        np.array([[[38, 39], [48, 49]]])
+        np.array([[[38, 39], [48, 49]]]),
     )
 
     # Too far right
