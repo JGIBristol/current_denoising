@@ -66,8 +66,7 @@ class MockRNG:
     """
     Fake RNG for testing with deterministic output
 
-    Needs methods for returning integers (for indexing)
-    and floats (for noise strength)
+    Method for returning floats (for noise strength)
     """
 
     def __init__(self):
