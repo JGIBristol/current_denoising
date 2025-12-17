@@ -173,6 +173,65 @@ def test_training_pairs():
     np.testing.assert_allclose(result, expected_output)
 
 
+def test_training_pairs_indices():
+    """
+    check that we get the expected tiles and indices
+    """
+    # Use fake RNG for testing with predetermined output
+    rng = MockRNG()
+
+    # Our MDT map
+    map = np.array(
+        [
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            [1, 2, 3, 4, 5, 6, 7, 8],
+        ]
+    )
+
+    # Make a noise strength strength quilt with some different elements
+    # on the diagonal
+    noise_strength_map = np.ones_like(map)
+    noise_strength_map[0, 0] = 2
+    noise_strength_map[1, 1] = 0
+
+    noise_tiles = [
+        np.array(
+            [
+                [1, 0],
+                [0, 1],
+            ]
+        ),
+        np.array(
+            [
+                [2, 1],
+                [0, 0],
+            ]
+        ),
+        # Set noise to 0 for the remaining tiles
+        *[np.array([[0, 0], [0, 0]]) for _ in range(6)],
+    ]
+
+    # Just check the first tile is correct - we've already
+    # tested the others in `test_training_pairs`
+    expected_output = np.array(
+        [
+            [[1, 2], [1, 2]],
+            [[3.5, 1.4], [0.7, 1.4]],
+        ]
+    )
+
+    expected_indices = [[0, 0], [0, 2], [0, 4], [0, 6], [2, 0], [2, 2], [2, 4], [2, 6]]
+
+    result, indices = data.get_training_pairs(
+        map, noise_strength_map, noise_tiles, np.inf, 0.5, rng, return_indices=True
+    )
+    np.testing.assert_allclose(result[0], expected_output)
+
+    np.testing.assert_equal(expected_indices, indices)
+
+
 def test_training_pairs_warn_if_too_little_noise():
     """
     Check we get the right warning if we extract more tiles than we have noise

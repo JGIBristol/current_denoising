@@ -125,7 +125,9 @@ def get_training_pairs(
     max_latitude: float,
     max_nan_fraction: float,
     rng: np.random.Generator,
-) -> np.ndarray:
+    *,
+    return_indices=False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """
     Get matched training pairs from a clean source gridded field, a map showing
     the global noise strength and an iterable of noise tiles.
@@ -149,12 +151,15 @@ def get_training_pairs(
                                the noise values as they vary in space. Useful if we expect to
                                have higher noise in some areas than others.
     :param noise_tiles: an iterable (either a list or numpy array) containing the noise tiles
-                        to apply to data. This tells us how many tiles to extract and also what
-                        size they should be. If a list, must contain square tiles of the same size;
+                        to apply to data. This tells us what size they should be.
+                        If a list, must contain square tiles of the same size;
                         if a numpy array, must have shape NxDxD.
+                        A warning will be issued if there are too few noise_tiles than tiles
+                        extracted from `clean_source`.
     :param max_latitude: maximum latitude to extract tiles from.
     :param max_nan_fraction: the maximum amount of NaN allowed in the tile.
     :param rng: random number generator, used for selecting stochastic noise strength.
+    :param return_indices: whether to also return the locations of each tile in the original grid.
 
     :returns: an Nx2xDxD array of training pairs, [clean, noisy]
     :raises DataError: if the strength map + source data are different shapes
@@ -231,7 +236,20 @@ def get_training_pairs(
         )
         noisy_tiles.append(noisy)
 
-    return np.stack([np.array(clean_tiles), np.array(noisy_tiles)], axis=1)
+    retval = np.stack([np.array(clean_tiles), np.array(noisy_tiles)], axis=1)
+
+    # I'm pretty sure that this shouldn't go wrong, but just in case
+    # let's check that we have the right numbers of indices/tiles
+    assert len(clean_indices) == len(
+        clean_tiles
+    ), f"Got {len(clean_indices)=} but {len(clean_tiles)=}"
+    assert len(clean_indices) == len(
+        noisy_tiles
+    ), f"Got {len(clean_indices)=} but {len(noisy_tiles)=}"
+
+    if return_indices:
+        return retval, clean_indices
+    return retval
 
 
 def dataloader(clean_tiles: np.ndarray, noisy_tiles: np.ndarray, config: DataConfig):

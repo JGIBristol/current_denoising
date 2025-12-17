@@ -455,7 +455,7 @@ def extract_tiles(
     tile_size: int = 32,
     allow_nan: bool = False,
     return_indices: bool = False,
-) -> np.ndarray:
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """
     Extract non-overlapping tiles from an input image.
 
