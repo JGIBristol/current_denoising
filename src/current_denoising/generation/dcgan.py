@@ -552,12 +552,38 @@ def _get_device(model: torch.nn.Module) -> str:
             raise ModelError(errmsg)
 
 
+def _random_orientation_augment(batch: torch.Tensor) -> torch.Tensor:
+    """Apply random 0/90/180/270 rotation and optional horizontal flip per-image."""
+    out = batch.clone()
+
+    # Choose how many rotations to make for each image, and whether to flip
+    k = torch.randint(0, 4, (out.size(0),), device=out.device)
+    flip = torch.rand(out.size(0), device=out.device) < 0.5
+
+    for rot in range(4):
+        # These are the tiles that we will rotate
+        if not (mask := k == rot).any():
+            continue
+
+        # Deal with rotations
+        if mask.any():
+            out_subset = torch.rot90(out[mask], k=rot, dims=(2, 3))
+
+        # Deal with flips
+        if (subset_flip := flip[mask]).any():
+            out_subset[subset_flip] = torch.flip(out_subset[subset_flip], dims=(3,))
+
+        out[mask] = out_subset
+
+    return out
+
+
 def _train_critic(
     generator: Generator,
     discriminator: Discriminator,
     optimiser: torch.optim.Optimizer,
     hyperparams: GANHyperParams,
-    batch_size: torch.Tensor,
+    batch_size: int,
     latent_size: int,
     real_imgs: torch.Tensor,
     alphas: torch.Tensor,
@@ -592,14 +618,18 @@ def _train_critic(
         # input size of 1 during training
         gen_imgs_d = generator.gen_imgs(batch_size, latent_size).detach()
 
+        # Perform data augmentation
+        gen_imgs_d = _random_orientation_augment(gen_imgs_d)
+        augmented_real_imgs = _random_orientation_augment(real_imgs)
+
         # detatch the generator output to avoid backpropagating through it
         # we don't want to update the generator during discriminator training
-        real_loss = discriminator(real_imgs)
+        real_loss = discriminator(augmented_real_imgs)
         fake_loss = discriminator(gen_imgs_d)
 
         # Gradient penalty
         gp, grad_norm = _gradient_penalty(
-            discriminator, real_imgs.data, gen_imgs_d.data, alphas[i]
+            discriminator, augmented_real_imgs, gen_imgs_d, alphas[i]
         )
         d_obj = fake_loss.mean() - real_loss.mean()
         d_loss = d_obj + hyperparams.lambda_gp * gp
@@ -633,10 +663,11 @@ def _train_generator(
     """
     optimiser.zero_grad()
 
-    # Generate a batch of images
+    # Generate a batch of images (with augmentation)
     # Now we do want to update the generator, so don't detatch
-    # input size of 1 during training
     gen_imgs = generator.gen_imgs(batch_size, noise_size)
+    gen_imgs = _random_orientation_augment(gen_imgs)
+
     g_loss = -discriminator(gen_imgs).mean()
 
     g_loss.backward()
@@ -685,6 +716,13 @@ def train(
     if device != _get_device(discriminator):
         raise TrainingError(
             f"Got different devices for generator and discriminator:\n\t{device} and {_get_device(discriminator)}"
+        )
+
+    if not dataloader.drop_last:
+        raise TrainingError(
+            "Cannot train with dataloader.drop_last=True; we need to drop the last"
+            "possibly incomplete batch to ensure that the critic and generator train"
+            "at the same rate. We could work around this, but I don't want to"
         )
 
     # Set up optimisers
