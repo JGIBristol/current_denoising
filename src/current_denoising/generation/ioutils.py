@@ -406,6 +406,24 @@ def fft_fraction(tile: np.ndarray, power_threshold: float):
     return high_freq_power / total_power
 
 
+def select_tile(tile: np.ndarray) -> bool:
+    """
+    Selection function for choosing GAN training tiles.
+
+    RMS and FFT based; intended to be used with `extract_tiles`,
+    as:
+
+    ```
+    ioutils.extract_tiles(data, tile_criterion=select_tile)
+    ```
+    """
+    if tile_rms(tile) > 0.05:
+        return False
+    if fft_fraction(tile, 0.05) < 0.80:
+        return False
+    return True
+
+
 def _tile_overlaps_mask(
     index: tuple[int, int], mask: np.ndarray, tile_size: int
 ) -> bool:
