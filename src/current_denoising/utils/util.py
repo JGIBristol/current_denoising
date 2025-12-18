@@ -8,6 +8,8 @@ from typing import Callable
 
 import numpy as np
 
+from ..generation import ioutils, mdt
+
 KM_PER_DEG = 111.32
 """Size of a degree on the grid (at the equator) in km"""
 
@@ -295,3 +297,40 @@ def split_into_tiles(
     )
 
     return tiles, locations
+
+
+def get_residual(img: np.ndarray, sigma_km: float) -> np.ndarray:
+    """
+    Get the residual (difference) between the provided MDT gridded field and a Gaussian smoothed version.
+
+    :param img: the (2d) gridded field from which a residual is extracted.
+                Land values should be marked with NaN.
+    :param sigma_km: the size, in km, of the gaussian smoothing filter.
+
+    :returns: the (2d) residual between `img` and the smoothed `img`.
+
+    Notes:
+    Performs an approximate smoothing - the size of the smoothing kernel varies with latitude, which is
+    much more accurate than assuming the grid points are equal sized, but it is still not exact.
+
+    The original image may contain NaNs, which will be replaced by their nearest neighbour
+    values (keeping them as NaN would cause the NaNs to propagate throughout the entire
+    grid; replacing them with a constant (e.g. 0.0 or the global mean) would distort the residual
+    near the coasts, which is what we care about). This nearest-neighbour search is not a true
+    physical nearest neighbour, since it doesn't account for the variation of grid point sizes
+    with latitude. However, since the nearest neighbour search is performed over very short
+    distances, it should be good enough.
+
+
+    """
+    # Find the difference between the original image and a smoothed version, where we replace
+    # NaN with their nearest values
+    nan_mask = np.isnan(img)
+    smoothed = mdt.gauss_smooth(mdt.fill_nan_with_nearest(img), sigma_km)
+
+    # Put NaN values back in to indicate land, and remove the global mean
+    smoothed = np.where(nan_mask, np.nan, smoothed)
+
+    residual = img - smoothed
+
+    return ioutils._remove_nanmean(residual)
